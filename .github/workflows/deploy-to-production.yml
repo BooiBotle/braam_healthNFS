@@ -1,0 +1,466 @@
+# ╔═══════════════════════════════════════════════════════════════════════════════╗
+# ║                    🏥 BRAAM HEALTH NFS CENTRE                                 ║
+# ║                    Production Deployment (Manual Trigger)                     ║
+# ╠═══════════════════════════════════════════════════════════════════════════════╣
+# ║  ⚠️  MANUAL TRIGGER ONLY - Promotes developer → main                          ║
+# ║  🔒 This is a PROTECTED workflow for production deployments                   ║
+# ║                                                                                ║
+# ║  Update Types:                                                                 ║
+# ║    • feature    → MAJOR release (2.0.0) + Email + Big Notification            ║
+# ║    • bugfix     → PATCH release (1.0.1) + Minor Notification                  ║
+# ║    • security   → PATCH release (1.0.1) + Minor Notification                  ║
+# ║    • system     → PATCH release (1.0.1) + Minor Notification                  ║
+# ╚═══════════════════════════════════════════════════════════════════════════════╝
+
+name: 🏥 Deploy Braam Health to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deployment:
+        description: '⚠️ Type "DEPLOY" to confirm production deployment'
+        required: true
+        type: string
+      update_type:
+        description: "📋 Select Update Type (determines versioning & notifications)"
+        required: true
+        type: choice
+        options:
+          - feature
+          - bugfix
+          - security
+          - system
+        default: bugfix
+      release_title:
+        description: "📢 Release Title (for notifications)"
+        required: true
+        type: string
+        default: "Braam Health Portal Update"
+      release_description:
+        description: "📝 Release Description/Changelog"
+        required: false
+        type: string
+        default: ""
+      send_email_notification:
+        description: "📧 Send Email Notification (only for feature releases)"
+        required: false
+        type: boolean
+        default: false
+      deployment_notes:
+        description: "📝 Internal Deployment Notes (optional)"
+        required: false
+        type: string
+        default: ""
+
+# 🔐 Permissions required for pushing to main
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: "20"
+  DEVELOPER_BRANCH: "developer"
+  MAIN_BRANCH: "main"
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🔐 VALIDATION - Ensure intentional deployment
+  # ═══════════════════════════════════════════════════════════════════════════════
+  validate:
+    name: 🔐 Validate Deployment Request
+    runs-on: ubuntu-latest
+    outputs:
+      is_valid: ${{ steps.check.outputs.valid }}
+      is_feature: ${{ steps.check.outputs.is_feature }}
+      version_type: ${{ steps.check.outputs.version_type }}
+    steps:
+      - name: 🔐 Verify Confirmation
+        id: check
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🔐 BRAAM HEALTH PRODUCTION DEPLOYMENT VALIDATION            ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+          echo ""
+
+          if [ "${{ github.event.inputs.confirm_deployment }}" != "DEPLOY" ]; then
+            echo "❌ Invalid confirmation. You must type 'DEPLOY' to proceed."
+            echo ""
+            echo "╔══════════════════════════════════════════════════════════════╗"
+            echo "║  ⛔ DEPLOYMENT CANCELLED                                     ║"
+            echo "║  You entered: ${{ github.event.inputs.confirm_deployment }}"
+            echo "║  Expected: DEPLOY                                            ║"
+            echo "╚══════════════════════════════════════════════════════════════╝"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "✅ Confirmation valid"
+            echo "valid=true" >> $GITHUB_OUTPUT
+          fi
+
+          UPDATE_TYPE="${{ github.event.inputs.update_type }}"
+          if [ "$UPDATE_TYPE" == "feature" ]; then
+            echo "is_feature=true" >> $GITHUB_OUTPUT
+            echo "version_type=major" >> $GITHUB_OUTPUT
+          else
+            echo "is_feature=false" >> $GITHUB_OUTPUT
+            echo "version_type=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📋 Log Deployment Request
+        if: steps.check.outputs.valid == 'true'
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  📋 BRAAM HEALTH DEPLOYMENT REQUEST                          ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║  👤 Triggered by: ${{ github.actor }}"
+          echo "║  📅 Time: $(date)"
+          echo "║  📋 Update Type: ${{ github.event.inputs.update_type }}"
+          echo "║  📢 Release: ${{ github.event.inputs.release_title }}"
+          echo "║  📝 Notes: ${{ github.event.inputs.deployment_notes || 'None' }}"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🧪 PRE-DEPLOYMENT TESTS - Final safety check
+  # ═══════════════════════════════════════════════════════════════════════════════
+  pre-deployment-tests:
+    name: 🧪 Pre-Deployment Tests
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.is_valid == 'true'
+    outputs:
+      test_result: ${{ steps.tests.outputs.result }}
+    steps:
+      - name: 📥 Checkout Developer Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEVELOPER_BRANCH }}
+          fetch-depth: 0
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📚 Install Dependencies
+        run: npm ci
+
+      - name: 🏗️ Build Check
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🏗️ BRAAM HEALTH PRODUCTION BUILD CHECK                       ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+          npm run build
+
+      - name: 🧪 Final Test Suite
+        id: tests
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🧪 RUNNING FINAL TEST SUITE                                 ║"
+          echo "║  ─────────────────────────────────────────────────────────── ║"
+          echo "║  ⚠️  All tests must pass to proceed with deployment          ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+          set +e
+          npm run test 2>&1 | tee test-output.txt
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "result=success" >> $GITHUB_OUTPUT
+            echo ""
+            echo "╔══════════════════════════════════════════════════════════════╗"
+            echo "║  ✅ ALL TESTS PASSED - Ready for production                  ║"
+            echo "╚══════════════════════════════════════════════════════════════╝"
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+            echo ""
+            echo "╔══════════════════════════════════════════════════════════════╗"
+            echo "║  ❌ TESTS FAILED - Production deployment blocked              ║"
+            echo "╚══════════════════════════════════════════════════════════════╝"
+            exit 1
+          fi
+
+      - name: 📤 Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: braam-health-pre-deployment-test-results
+          path: test-output.txt
+          retention-days: 30
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🏁 DEPLOY TO PRODUCTION WITH SEMANTIC VERSIONING
+  # ═══════════════════════════════════════════════════════════════════════════════
+  deploy-to-production:
+    name: 🛡️ Deploy to Main
+    runs-on: ubuntu-latest
+    needs: [validate, pre-deployment-tests]
+    if: |
+      needs.validate.outputs.is_valid == 'true' && 
+      needs.pre-deployment-tests.outputs.test_result == 'success'
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      old_version: ${{ steps.version.outputs.old_version }}
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEVELOPER_BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 🔧 Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: 🏷️ Calculate Production Version
+        id: version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "old_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Current developer version: $CURRENT_VERSION"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          UPDATE_TYPE="${{ github.event.inputs.update_type }}"
+
+          if [ "$UPDATE_TYPE" == "feature" ]; then
+            NEW_MAJOR=$((MAJOR + 1))
+            NEW_VERSION="${NEW_MAJOR}.0.0"
+            VERSION_LABEL="🆕 MAJOR RELEASE"
+          else
+            NEW_PATCH=$((PATCH + 1))
+            NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+            VERSION_LABEL="🔧 PATCH RELEASE"
+          fi
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🏷️ PRODUCTION VERSION                                       ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║  📦 Current: $CURRENT_VERSION                                ║"
+          echo "║  📦 New:     $NEW_VERSION                                    ║"
+          echo "║  📋 Type:    $UPDATE_TYPE ($VERSION_LABEL)                   ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+      - name: 🛡️ Merge Developer to Main with Version
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════════════════╗"
+          echo "║                                                                          ║"
+          echo "║  🛡️ DEPLOYING TO PRODUCTION                                              ║"
+          echo "║  ────────────────────────────────────────────────────────────────────── ║"
+          echo "║  Merging: developer → main                                               ║"
+          echo "║                                                                          ║"
+          echo "╚══════════════════════════════════════════════════════════════════════════╝"
+
+          git fetch origin
+
+          npm version ${{ steps.version.outputs.new_version }} --no-git-tag-version --allow-same-version
+          git add package.json package-lock.json 2>/dev/null || git add package.json
+          git commit -m "🏷️ Release v${{ steps.version.outputs.new_version }} [${{ github.event.inputs.update_type }}]" || true
+          git push origin ${{ env.DEVELOPER_BRANCH }}
+
+          git checkout ${{ env.MAIN_BRANCH }}
+          git pull origin ${{ env.MAIN_BRANCH }}
+
+          NOTES="${{ github.event.inputs.deployment_notes }}"
+          if [ -z "$NOTES" ]; then
+            NOTES="Manual production deployment"
+          fi
+
+          UPDATE_TYPE="${{ github.event.inputs.update_type }}"
+          RELEASE_TITLE="${{ github.event.inputs.release_title }}"
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+
+          git merge origin/${{ env.DEVELOPER_BRANCH }} --no-ff \
+            -m "🛡️ Production Release v$NEW_VERSION
+
+          ════════════════════════════════════════════════════
+          📢 $RELEASE_TITLE
+          ════════════════════════════════════════════════════
+          📦 Version: $NEW_VERSION
+          📋 Type: $UPDATE_TYPE
+          👤 Deployed by: ${{ github.actor }}
+          📅 Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          📝 Notes: $NOTES
+          🔖 Run ID: ${{ github.run_id }}
+          ════════════════════════════════════════════════════
+
+          ${{ github.event.inputs.release_description }}
+
+          ✅ Pre-deployment tests: Passed
+          🤖 Merged by: GitHub Actions"
+
+          git push origin ${{ env.MAIN_BRANCH }}
+
+          echo ""
+          echo "╔══════════════════════════════════════════════════════════════════════════╗"
+          echo "║                                                                          ║"
+          echo "║  ✅ PRODUCTION DEPLOYMENT SUCCESSFUL                                     ║"
+          echo "║  ────────────────────────────────────────────────────────────────────── ║"
+          echo "║  🎉 Portal v$NEW_VERSION is now live in production!                      ║"
+          echo "║                                                                          ║"
+          echo "╚══════════════════════════════════════════════════════════════════════════╝"
+
+      - name: 🏷️ Create Production Release Tag
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          UPDATE_TYPE="${{ github.event.inputs.update_type }}"
+          RELEASE_TITLE="${{ github.event.inputs.release_title }}"
+
+          TAG_NAME="v$NEW_VERSION"
+
+          git tag -a "$TAG_NAME" -m "🛡️ Production Release $TAG_NAME
+
+          ════════════════════════════════════════════════════
+          📢 $RELEASE_TITLE
+          ════════════════════════════════════════════════════
+          📦 Version: $NEW_VERSION
+          📋 Type: $UPDATE_TYPE
+          👤 Deployed by: ${{ github.actor }}
+          📅 Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          ════════════════════════════════════════════════════
+
+          ${{ github.event.inputs.release_description }}"
+
+          git push origin "$TAG_NAME"
+          echo "📌 Created production release tag: $TAG_NAME"
+
+      - name: 📊 Deployment Summary
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          OLD_VERSION="${{ steps.version.outputs.old_version }}"
+          UPDATE_TYPE="${{ github.event.inputs.update_type }}"
+          IS_FEATURE="${{ needs.validate.outputs.is_feature }}"
+
+          echo "## 🛡️ Production Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Release v$NEW_VERSION Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Version | \`$OLD_VERSION\` → \`$NEW_VERSION\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📋 Update Type | \`$UPDATE_TYPE\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📢 Release | ${{ github.event.inputs.release_title }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 👤 Deployed by | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📅 Time | $(date -u '+%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏷️ Tag | \`v$NEW_VERSION\` |" >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 📢 CREATE RELEASE NOTIFICATION IN DATABASE
+  # ═══════════════════════════════════════════════════════════════════════════════
+  create-release-notification:
+    name: 📢 Create Release Notification
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-to-production]
+    if: needs.deploy-to-production.result == 'success'
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.MAIN_BRANCH }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📢 Generate Release Notification Data
+        run: |
+          NEW_VERSION="${{ needs.deploy-to-production.outputs.new_version }}"
+          UPDATE_TYPE="${{ github.event.inputs.update_type }}"
+          IS_FEATURE="${{ needs.validate.outputs.is_feature }}"
+          RELEASE_TITLE="${{ github.event.inputs.release_title }}"
+
+          if [ "$IS_FEATURE" == "true" ]; then
+            NOTIFICATION_TYPE="major"
+          elif [ "$UPDATE_TYPE" == "security" ]; then
+            NOTIFICATION_TYPE="security"
+          else
+            NOTIFICATION_TYPE="minor"
+          fi
+
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  📢 RELEASE NOTIFICATION PREPARED                            ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║  📦 Version: $NEW_VERSION                                    ║"
+          echo "║  📋 Type: $NOTIFICATION_TYPE                                 ║"
+          echo "║  📢 Title: $RELEASE_TITLE                                    ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+          cat > release-notification.json << EOF
+          {
+            "version": "$NEW_VERSION",
+            "type": "$UPDATE_TYPE",
+            "notificationType": "$NOTIFICATION_TYPE",
+            "title": "$RELEASE_TITLE",
+            "description": "${{ github.event.inputs.release_description }}",
+            "deployedBy": "${{ github.actor }}",
+            "deployedAt": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+            "isFeature": $IS_FEATURE,
+            "sendEmailNotification": ${{ github.event.inputs.send_email_notification }},
+            "app": "braam-health",
+            "tagName": "v$NEW_VERSION"
+          }
+          EOF
+
+          cat release-notification.json
+
+      - name: 📝 Create Release in Appwrite Database
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          APPWRITE_DATABASE_ID: ${{ secrets.APPWRITE_DATABASE_ID }}
+        run: |
+          NOTIFICATION_DATA=$(cat release-notification.json)
+
+          RESPONSE=$(curl -s -X POST "${APPWRITE_ENDPOINT}/databases/${APPWRITE_DATABASE_ID}/collections/releases/documents" \
+            -H "Content-Type: application/json" \
+            -H "X-Appwrite-Project: ${APPWRITE_PROJECT_ID}" \
+            -H "X-Appwrite-Key: ${APPWRITE_API_KEY}" \
+            -d "{
+              \"documentId\": \"unique()\",
+              \"data\": $NOTIFICATION_DATA
+            }")
+
+          if echo "$RESPONSE" | grep -q '"\$id"'; then
+            RELEASE_ID=$(echo "$RESPONSE" | jq -r '."$id"')
+            echo "✅ Release notification created with ID: $RELEASE_ID"
+          else
+            echo "⚠️ Warning: Could not create release notification in database"
+            echo "Response: $RESPONSE"
+          fi
+
+      - name: 📤 Upload Notification Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notification
+          path: release-notification.json
+          retention-days: 30
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🚨 DEPLOYMENT FAILED
+  # ═══════════════════════════════════════════════════════════════════════════════
+  deployment-failed:
+    name: 🚨 Deployment Failed
+    runs-on: ubuntu-latest
+    needs: [validate, pre-deployment-tests]
+    if: failure()
+    steps:
+      - name: 🚨 Generate Failure Report
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════════════════╗"
+          echo "║                                                                          ║"
+          echo "║  🚨 PRODUCTION DEPLOYMENT FAILED                                         ║"
+          echo "║  ────────────────────────────────────────────────────────────────────── ║"
+          echo "║  ❌ Deployment was blocked due to errors                                 ║"
+          echo "║                                                                          ║"
+          echo "╚══════════════════════════════════════════════════════════════════════════╝"

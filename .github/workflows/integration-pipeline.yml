@@ -1,0 +1,627 @@
+# ╔═══════════════════════════════════════════════════════════════════════════════╗
+# ║                    🏥 BRAAM HEALTH NFS CENTRE                                 ║
+# ║                    Comprehensive Integration Pipeline                         ║
+# ╠═══════════════════════════════════════════════════════════════════════════════╣
+# ║  ⚠️  MANUAL TRIGGER ONLY - Run when your code is ready                       ║
+# ║  Flow: source_branch → integrations → developer (with version bump)           ║
+# ║                                                                                ║
+# ║  Versioning: MAJOR.MINOR.PATCH semantic versioning                            ║
+# ║    • feature = MAJOR bump (1.0.0 → 2.0.0)                                     ║
+# ║    • bugfix = PATCH bump (1.0.0 → 1.0.1)                                      ║
+# ║    • security = PATCH bump (1.0.0 → 1.0.1)                                    ║
+# ║    • system = MINOR bump (1.0.0 → 1.1.0)                                      ║
+# ╚═══════════════════════════════════════════════════════════════════════════════╝
+
+name: 🏥 Braam Health Integration Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: "🌿 Source branch to build and merge"
+        required: true
+        type: string
+        default: "project-initialization"
+      update_type:
+        description: "📋 Update type (determines version bump)"
+        required: true
+        type: choice
+        options:
+          - feature
+          - bugfix
+          - security
+          - system
+        default: bugfix
+      delete_branch:
+        description: "🗑️ Delete source branch after merge?"
+        required: false
+        type: boolean
+        default: false
+
+# 🔐 Permissions required for pushing to branches
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  NODE_VERSION: "20"
+  INTEGRATION_BRANCH: "integrations"
+  DEVELOPER_BRANCH: "developer"
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 📋 SETUP & VALIDATION WITH UPDATE TYPE DETECTION
+  # ═══════════════════════════════════════════════════════════════════════════════
+  setup:
+    name: 📋 Setup & Analyze
+    runs-on: ubuntu-latest
+    outputs:
+      branch_name: ${{ steps.branch.outputs.name }}
+      update_type: ${{ steps.branch.outputs.update_type }}
+      is_feature: ${{ steps.branch.outputs.is_feature }}
+      is_security: ${{ steps.branch.outputs.is_security }}
+      should_promote: ${{ steps.check.outputs.should_promote }}
+      version_bump: ${{ steps.branch.outputs.version_bump }}
+      delete_branch: ${{ steps.branch.outputs.delete_branch }}
+    steps:
+      - name: 🔍 Extract Branch Info & Determine Update Type
+        id: branch
+        run: |
+          BRANCH_NAME="${{ github.event.inputs.source_branch }}"
+          UPDATE_TYPE_INPUT="${{ github.event.inputs.update_type }}"
+          DELETE_BRANCH="${{ github.event.inputs.delete_branch }}"
+          
+          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "delete_branch=$DELETE_BRANCH" >> $GITHUB_OUTPUT
+
+          if [ "$UPDATE_TYPE_INPUT" == "feature" ]; then
+            echo "update_type=feature" >> $GITHUB_OUTPUT
+            echo "is_feature=true" >> $GITHUB_OUTPUT
+            echo "is_security=false" >> $GITHUB_OUTPUT
+            echo "version_bump=major" >> $GITHUB_OUTPUT
+            UPDATE_TYPE="🆕 NEW FEATURE (MAJOR)"
+          elif [ "$UPDATE_TYPE_INPUT" == "bugfix" ]; then
+            echo "update_type=bugfix" >> $GITHUB_OUTPUT
+            echo "is_feature=false" >> $GITHUB_OUTPUT
+            echo "is_security=false" >> $GITHUB_OUTPUT
+            echo "version_bump=patch" >> $GITHUB_OUTPUT
+            UPDATE_TYPE="🐛 BUG FIX (PATCH)"
+          elif [ "$UPDATE_TYPE_INPUT" == "security" ]; then
+            echo "update_type=security" >> $GITHUB_OUTPUT
+            echo "is_feature=false" >> $GITHUB_OUTPUT
+            echo "is_security=true" >> $GITHUB_OUTPUT
+            echo "version_bump=patch" >> $GITHUB_OUTPUT
+            UPDATE_TYPE="🔒 SECURITY UPDATE (PATCH)"
+          else
+            echo "update_type=system" >> $GITHUB_OUTPUT
+            echo "is_feature=false" >> $GITHUB_OUTPUT
+            echo "is_security=false" >> $GITHUB_OUTPUT
+            echo "version_bump=minor" >> $GITHUB_OUTPUT
+            UPDATE_TYPE="⚙️ SYSTEM UPDATE (MINOR)"
+          fi
+
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🏥 BRAAM HEALTH NFS CENTRE CI/CD PIPELINE                   ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║  🌿 Source Branch: $BRANCH_NAME"
+          echo "║  📋 Update Type:   $UPDATE_TYPE"
+          echo "║  🗑️  Delete Branch: $DELETE_BRANCH"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+      - name: ✅ Check Promotion Eligibility
+        id: check
+        run: |
+          echo "should_promote=true" >> $GITHUB_OUTPUT
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🏗️ BUILD STAGE
+  # ═══════════════════════════════════════════════════════════════════════════════
+  build:
+    name: 🏗️ Build Application
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_branch }}
+          fetch-depth: 0
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📚 Install Dependencies
+        run: |
+          echo "╔══════════════════════════════════════════╗"
+          echo "║  📚 Installing Dependencies...           ║"
+          echo "╚══════════════════════════════════════════╝"
+          npm ci
+
+      - name: 🔨 Build Application
+        run: |
+          echo "╔══════════════════════════════════════════╗"
+          echo "║  🔨 Building Braam Health App...         ║"
+          echo "╚══════════════════════════════════════════╝"
+          npm run build
+        env:
+          CI: true
+
+      - name: 📤 Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: braam-health-build-output
+          path: dist/
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🔬 CODE QUALITY CHECKS
+  # ═══════════════════════════════════════════════════════════════════════════════
+  code-quality:
+    name: 🔬 Code Quality
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📚 Install Dependencies
+        run: npm ci
+
+      - name: 🔍 ESLint Check
+        id: eslint
+        run: |
+          echo "╔══════════════════════════════════════════╗"
+          echo "║  🔍 Running ESLint...                    ║"
+          echo "╚══════════════════════════════════════════╝"
+          npm run lint 2>&1 | tee lint-output.txt || true
+        continue-on-error: true
+
+      - name: 📝 TypeScript Validation
+        id: typecheck
+        run: |
+          echo "╔══════════════════════════════════════════╗"
+          echo "║  📝 TypeScript Type Checking...          ║"
+          echo "╚══════════════════════════════════════════╝"
+          npm run typecheck 2>&1 | tee typecheck-output.txt || true
+        continue-on-error: true
+
+      - name: 📊 Quality Summary
+        if: always()
+        run: |
+          echo "## 🔬 Code Quality Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 ESLint Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f lint-output.txt ]; then
+            tail -30 lint-output.txt >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No lint output captured" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 TypeScript Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f typecheck-output.txt ]; then
+            tail -30 typecheck-output.txt >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No typecheck output captured" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🧪 INTEGRATION TESTS - THE GATEKEEPER
+  # ═══════════════════════════════════════════════════════════════════════════════
+  integration-tests:
+    name: 🧪 Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build, code-quality]
+    outputs:
+      test_result: ${{ steps.tests.outputs.result }}
+      test_summary: ${{ steps.tests.outputs.summary }}
+      error_log: ${{ steps.tests.outputs.error_log }}
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📚 Install Dependencies
+        run: npm ci
+
+      - name: 🧪 Execute Integration Tests
+        id: tests
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════════════════╗"
+          echo "║                                                                          ║"
+          echo "║  🧪 INTEGRATION TEST SUITE - BRAAM HEALTH NFS                           ║"
+          echo "║  ────────────────────────────────────────────────────────────────────── ║"
+          echo "║  🎯 All tests MUST pass for automatic branch promotion                   ║"
+          echo "║  ❌ Any failure will halt the pipeline and report errors                 ║"
+          echo "║                                                                          ║"
+          echo "╚══════════════════════════════════════════════════════════════════════════╝"
+          echo ""
+
+          mkdir -p test-results
+
+          set +e
+          npm run test 2>&1 | tee test-results/test-output.txt
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════════════════════"
+
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "result=success" >> $GITHUB_OUTPUT
+            echo "summary=✅ All integration tests passed!" >> $GITHUB_OUTPUT
+            echo "error_log=" >> $GITHUB_OUTPUT
+            echo ""
+            echo "╔══════════════════════════════════════════════════════════════════════════╗"
+            echo "║  ✅ ALL TESTS PASSED                                                     ║"
+            echo "║  ────────────────────────────────────────────────────────────────────── ║"
+            echo "║  🚀 Pipeline will proceed to automatic branch promotion                  ║"
+            echo "║                                                                          ║"
+            echo "║  Next: source_branch → integrations → developer                          ║"
+            echo "╚══════════════════════════════════════════════════════════════════════════╝"
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+            echo "summary=❌ Tests failed - review errors below" >> $GITHUB_OUTPUT
+            
+            ERROR_LOG=$(tail -100 test-results/test-output.txt | head -50)
+            echo "error_log<<EOF" >> $GITHUB_OUTPUT
+            echo "$ERROR_LOG" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            echo ""
+            echo "╔══════════════════════════════════════════════════════════════════════════╗"
+            echo "║  ❌ TESTS FAILED - PIPELINE HALTED                                       ║"
+            echo "║  ────────────────────────────────────────────────────────────────────── ║"
+            echo "║  🔍 Review the test output above to identify failures                    ║"
+            echo "║  🔧 Fix the failing tests and push again                                 ║"
+            echo "╚══════════════════════════════════════════════════════════════════════════╝"
+            exit 1
+          fi
+
+      - name: 📊 Test Results Report
+        if: always()
+        run: |
+          echo "## 🧪 Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.tests.outputs.result }}" == "success" ]; then
+            echo "### ✅ Status: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> 🎉 All integration tests completed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Pipeline Status:** Ready for automatic promotion" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Status: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> ⚠️ Integration tests failed. Pipeline halted." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### 📋 Error Details" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            if [ -f test-results/test-output.txt ]; then
+              tail -60 test-results/test-output.txt >> $GITHUB_STEP_SUMMARY
+            fi
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 📤 Upload Test Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: braam-health-test-results
+          path: |
+            test-results/
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🔀 AUTO MERGE TO INTEGRATIONS
+  # ═══════════════════════════════════════════════════════════════════════════════
+  merge-to-integration:
+    name: 🔀 Merge → Integrations
+    runs-on: ubuntu-latest
+    needs: [setup, integration-tests]
+    if: ${{ always() && needs.integration-tests.result == 'success' }}
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.source_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔧 Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: 🔀 Auto-Merge to Integrations
+        id: merge_integration
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🔀 AUTO-MERGING TO INTEGRATIONS BRANCH                      ║"
+          echo "║  ─────────────────────────────────────────────────────────── ║"
+          echo "║  All tests passed ✅ - Proceeding with merge                 ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+          git fetch origin
+
+          if git show-ref --verify --quiet refs/remotes/origin/${{ env.INTEGRATION_BRANCH }}; then
+            git checkout ${{ env.INTEGRATION_BRANCH }}
+            git pull origin ${{ env.INTEGRATION_BRANCH }}
+          else
+            echo "Creating integrations branch..."
+            git checkout -b ${{ env.INTEGRATION_BRANCH }}
+          fi
+
+          FEATURE_BRANCH="${{ needs.setup.outputs.branch_name }}"
+          UPDATE_TYPE="${{ needs.setup.outputs.update_type }}"
+          VERSION_BUMP="${{ needs.setup.outputs.version_bump }}"
+          echo "📌 Merging: $FEATURE_BRANCH → ${{ env.INTEGRATION_BRANCH }}"
+          echo "📋 Update Type: $UPDATE_TYPE"
+          echo "🏷️ Version Bump: $VERSION_BUMP"
+
+          git merge origin/$FEATURE_BRANCH --no-ff \
+            -m "🔀 Auto-merge [$UPDATE_TYPE]: $FEATURE_BRANCH → integrations
+
+          ───────────────────────────────────
+          📋 Update Type: $UPDATE_TYPE
+          🏷️ Version Bump: $VERSION_BUMP
+          ✅ Tests: Passed
+          🤖 Merged by: GitHub Actions
+          ───────────────────────────────────"
+
+          git push origin ${{ env.INTEGRATION_BRANCH }}
+
+          echo ""
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  ✅ MERGE TO INTEGRATIONS COMPLETE                           ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🚀 AUTO PROMOTE TO DEVELOPER WITH SEMANTIC VERSIONING
+  # ═══════════════════════════════════════════════════════════════════════════════
+  promote-to-developer:
+    name: 🚀 Promote → Developer + Version
+    runs-on: ubuntu-latest
+    needs: [setup, merge-to-integration]
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      old_version: ${{ steps.version.outputs.old_version }}
+      update_type: ${{ needs.setup.outputs.update_type }}
+      is_feature: ${{ needs.setup.outputs.is_feature }}
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 🔧 Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: 🏷️ Calculate Semantic Version
+        id: version
+        run: |
+          git fetch origin
+
+          if git show-ref --verify --quiet refs/remotes/origin/${{ env.DEVELOPER_BRANCH }}; then
+            CURRENT_VERSION=$(git show origin/${{ env.DEVELOPER_BRANCH }}:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version")
+          else
+            CURRENT_VERSION=$(git show origin/${{ env.INTEGRATION_BRANCH }}:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version")
+          fi
+
+          echo "old_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Current version (from developer): $CURRENT_VERSION"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          VERSION_BUMP="${{ needs.setup.outputs.version_bump }}"
+          IS_FEATURE="${{ needs.setup.outputs.is_feature }}"
+          UPDATE_TYPE="${{ needs.setup.outputs.update_type }}"
+
+          if [ "$VERSION_BUMP" == "major" ]; then
+            NEW_MAJOR=$((MAJOR + 1))
+            NEW_VERSION="${NEW_MAJOR}.0.0"
+            VERSION_LABEL="🆕 MAJOR RELEASE"
+          elif [ "$VERSION_BUMP" == "minor" ]; then
+            NEW_MINOR=$((MINOR + 1))
+            NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+            VERSION_LABEL="📈 MINOR RELEASE"
+          else
+            NEW_PATCH=$((PATCH + 1))
+            NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+            VERSION_LABEL="🔧 PATCH RELEASE"
+          fi
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🏷️ SEMANTIC VERSION UPDATE                                  ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║  📦 Current: $CURRENT_VERSION                                ║"
+          echo "║  📦 New:     $NEW_VERSION                                    ║"
+          echo "║  📋 Type:    $UPDATE_TYPE ($VERSION_LABEL)                   ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+      - name: 🚀 Promote to Developer with Version
+        run: |
+          git fetch origin
+
+          if git show-ref --verify --quiet refs/remotes/origin/${{ env.DEVELOPER_BRANCH }}; then
+            git checkout ${{ env.DEVELOPER_BRANCH }}
+            git pull origin ${{ env.DEVELOPER_BRANCH }}
+          else
+            git checkout -b ${{ env.DEVELOPER_BRANCH }}
+          fi
+
+          UPDATE_TYPE="${{ needs.setup.outputs.update_type }}"
+          IS_FEATURE="${{ needs.setup.outputs.is_feature }}"
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          OLD_VERSION="${{ steps.version.outputs.old_version }}"
+
+          git merge origin/${{ env.INTEGRATION_BRANCH }} --no-ff -X theirs \
+            -m "🚀 Release v$NEW_VERSION → developer
+
+          ═══════════════════════════════════════════════════
+          📦 Version: $OLD_VERSION → $NEW_VERSION
+          📋 Update Type: $UPDATE_TYPE
+          🌿 Branch: ${{ needs.setup.outputs.branch_name }}
+          ═══════════════════════════════════════════════════
+
+          ✅ Tests: Passed
+          ✅ Integration: Merged
+          🤖 Promoted by: GitHub Actions"
+
+          npm version $NEW_VERSION --no-git-tag-version --allow-same-version
+
+          git add package.json package-lock.json 2>/dev/null || git add package.json
+          git commit -m "🏷️ Bump version to $NEW_VERSION [$UPDATE_TYPE]" || true
+
+          git push origin ${{ env.DEVELOPER_BRANCH }}
+
+      - name: 🏷️ Create Developer Release Tag
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          UPDATE_TYPE="${{ needs.setup.outputs.update_type }}"
+          IS_FEATURE="${{ needs.setup.outputs.is_feature }}"
+
+          TAG_NAME="v$NEW_VERSION-dev"
+
+          git tag -d "$TAG_NAME" 2>/dev/null || true
+          git push origin --delete "$TAG_NAME" 2>/dev/null || true
+
+          git tag -a "$TAG_NAME" -m "🏷️ Developer Release $TAG_NAME
+
+          ═══════════════════════════════════════════════════
+          📦 Version: $NEW_VERSION
+          📋 Type: $UPDATE_TYPE
+          🆕 Is Feature: $IS_FEATURE
+          👤 Triggered by: ${{ github.actor }}
+          📅 Date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          ═══════════════════════════════════════════════════"
+
+          git push origin "$TAG_NAME"
+          echo "📌 Created tag: $TAG_NAME"
+
+      - name: 📊 Pipeline Summary
+        run: |
+          echo "## 🚀 Pipeline Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Version Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Old Version | \`${{ steps.version.outputs.old_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| New Version | \`${{ steps.version.outputs.new_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Update Type | \`${{ needs.setup.outputs.update_type }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Is Feature | \`${{ needs.setup.outputs.is_feature }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Promotion Flow" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Branch | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 1️⃣ Feature | \`${{ github.ref_name }}\` | ✅ Tests Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2️⃣ Integration | \`integrations\` | ✅ Auto-Merged |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3️⃣ Developer | \`developer\` | ✅ Auto-Promoted (v${{ steps.version.outputs.new_version }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 4️⃣ Main | \`main\` | ⏳ Awaiting Manual Deploy |" >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🚨 FAILURE HANDLER - DETAILED ERROR REPORTING
+  # ═══════════════════════════════════════════════════════════════════════════════
+  handle-failure:
+    name: 🚨 Handle Failure
+    runs-on: ubuntu-latest
+    needs: [setup, integration-tests]
+    if: failure()
+    steps:
+      - name: 🚨 Generate Failure Report
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════════════════╗"
+          echo "║                                                                          ║"
+          echo "║  🚨 PIPELINE FAILED - BRAAM HEALTH NFS                                   ║"
+          echo "║  ────────────────────────────────────────────────────────────────────── ║"
+          echo "║                                                                          ║"
+          echo "║  ❌ Integration tests did not pass                                       ║"
+          echo "║  🔄 Changes have NOT been promoted                                       ║"
+          echo "║                                                                          ║"
+          echo "║  Branch: ${{ github.ref_name }}                                          ║"
+          echo "║  Commit: ${{ github.sha }}                                               ║"
+          echo "║  Actor:  ${{ github.actor }}                                             ║"
+          echo "║                                                                          ║"
+          echo "╚══════════════════════════════════════════════════════════════════════════╝"
+
+          echo "## 🚨 Braam Health Pipeline Failed!" >> $GITHUB_STEP_SUMMARY
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # ✅ SUCCESS NOTIFICATION
+  # ═══════════════════════════════════════════════════════════════════════════════
+  notify-success:
+    name: ✅ Success Notification
+    runs-on: ubuntu-latest
+    needs: [promote-to-developer, setup]
+    if: ${{ needs.promote-to-developer.result == 'success' }}
+    steps:
+      - name: ✅ Pipeline Success
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════════════════╗"
+          echo "║                                                                          ║"
+          echo "║  ✅ BRAAM HEALTH PIPELINE COMPLETED SUCCESSFULLY                        ║"
+          echo "║  ────────────────────────────────────────────────────────────────────── ║"
+          echo "║                                                                          ║"
+          echo "║  🧪 Tests: Passed                                                        ║"
+          echo "║  🔀 Integration: Merged                                                  ║"
+          echo "║  🚀 Developer: Promoted                                                  ║"
+          echo "║                                                                          ║"
+          echo "║  📋 Awaiting manual merge to main                                        ║"
+          echo "║                                                                          ║"
+          echo "╚══════════════════════════════════════════════════════════════════════════╝"
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # 🧹 CLEANUP - DELETE SOURCE BRANCH AFTER SUCCESSFUL MERGE
+  # ═══════════════════════════════════════════════════════════════════════════════
+  cleanup-branch:
+    name: 🧹 Cleanup Source Branch
+    runs-on: ubuntu-latest
+    needs: [promote-to-developer, setup]
+    if: ${{ needs.promote-to-developer.result == 'success' && needs.setup.outputs.delete_branch == 'true' }}
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🗑️ Delete Source Branch
+        run: |
+          BRANCH_NAME="${{ needs.setup.outputs.branch_name }}"
+
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║  🧹 CLEANUP: DELETING SOURCE BRANCH                          ║"
+          echo "╠══════════════════════════════════════════════════════════════╣"
+          echo "║  🌿 Branch: $BRANCH_NAME"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+
+          git push origin --delete "$BRANCH_NAME" || echo "⚠️ Branch may already be deleted or protected"
