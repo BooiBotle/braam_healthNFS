@@ -32,6 +32,26 @@ import MedicationRegister from './pages/staff/MedicationRegister';
 import PeakHours from './pages/staff/PeakHours';
 import StaffProfile from './pages/staff/StaffProfile';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminMembers from './pages/admin/AdminMembers';
+import AdminApplications from './pages/admin/AdminApplications';
+import AdminOnboarding from './pages/admin/AdminOnboarding';
+import AdminAppointments from './pages/admin/AdminAppointments';
+import AdminSystemUsers from './pages/admin/AdminSystemUsers';
+import AdminDebitOrders from './pages/admin/AdminDebitOrders';
+import AdminMandates from './pages/admin/AdminMandates';
+import AdminReconciliation from './pages/admin/AdminReconciliation';
+import AdminPlanChanges from './pages/admin/AdminPlanChanges';
+import AdminKYC from './pages/admin/AdminKYC';
+import AdminPOPIA from './pages/admin/AdminPOPIA';
+import AdminAgreements from './pages/admin/AdminAgreements';
+import AdminAuditLog from './pages/admin/AdminAuditLog';
+import AdminCards from './pages/admin/AdminCards';
+import AdminCardsGallery from './pages/admin/AdminCardsGallery';
+import AdminCrossSell from './pages/admin/AdminCrossSell';
+import AdminRetention from './pages/admin/AdminRetention';
+import AdminReports from './pages/admin/AdminReports';
+import AdminIntegrations from './pages/admin/AdminIntegrations';
+import AdminSettings from './pages/admin/AdminSettings';
 
 function App() {
   return (
@@ -82,7 +102,26 @@ function App() {
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']} />}>
               <Route element={<PortalLayout />}>
                 <Route index element={<AdminDashboard />} />
-                {/* Other admin routes would go here */}
+                <Route path="members" element={<AdminMembers />} />
+                <Route path="applications" element={<AdminApplications />} />
+                <Route path="onboarding" element={<AdminOnboarding />} />
+                <Route path="appointments" element={<AdminAppointments />} />
+                <Route path="system-users" element={<AdminSystemUsers />} />
+                <Route path="debit-orders" element={<AdminDebitOrders />} />
+                <Route path="mandates" element={<AdminMandates />} />
+                <Route path="reconciliation" element={<AdminReconciliation />} />
+                <Route path="plan-changes" element={<AdminPlanChanges />} />
+                <Route path="kyc" element={<AdminKYC />} />
+                <Route path="popia" element={<AdminPOPIA />} />
+                <Route path="agreements" element={<AdminAgreements />} />
+                <Route path="audit" element={<AdminAuditLog />} />
+                <Route path="cards" element={<AdminCards />} />
+                <Route path="cards-gallery" element={<AdminCardsGallery />} />
+                <Route path="cross-sell" element={<AdminCrossSell />} />
+                <Route path="retention" element={<AdminRetention />} />
+                <Route path="reports" element={<AdminReports />} />
+                <Route path="integrations" element={<AdminIntegrations />} />
+                <Route path="settings" element={<AdminSettings />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
             </Route>
