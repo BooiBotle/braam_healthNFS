@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Shield, Heart, Activity, CheckCircle, Mail, User, FileText, Stethoscope, ArrowRight, Zap, Clock, UserCheck, Briefcase, Pill } from 'lucide-react';
@@ -8,7 +8,7 @@ import Footer from '../../components/Footer';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' as any } },
 };
 
 const stagger = {
@@ -105,7 +105,7 @@ const LandingPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 40, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' as any }}
             >
               <div className="glass" style={{
                 padding: 'var(--sp-8)',
@@ -451,3 +451,8 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
+
+
+
+

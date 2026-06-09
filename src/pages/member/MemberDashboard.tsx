@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { QrCode, FileText, Calendar, CreditCard, Activity, ShieldCheck, Download } from 'lucide-react';
+import { QrCode, CreditCard, Activity, ShieldCheck, Download } from 'lucide-react';
 
 const MemberDashboard = () => {
   const { user } = useAuth();
@@ -222,3 +222,7 @@ const MemberDashboard = () => {
 };
 
 export default MemberDashboard;
+
+
+
+

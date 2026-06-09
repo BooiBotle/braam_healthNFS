@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useState, useEffect } from 'react';
+
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
 import { Users, FileText, Activity, CreditCard, ChevronRight, BarChart3, TrendingUp } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  
   const [stats, setStats] = useState({
     totalMembers: 0,
     pendingApps: 0,
@@ -146,3 +146,6 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+
+

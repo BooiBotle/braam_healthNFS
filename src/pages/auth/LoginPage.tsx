@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Shield, Mail, Key, User, FileText, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Key, User, FileText, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const LoginPage = () => {
-  const { theme } = useTheme();
-  const { loginWithOtp, verifyOtp } = useAuth();
+  
+  const { loginWithOtp, verifyOtp, signInWithPassword, user } = useAuth();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (user) {
+      if (user.role === 'admin') navigate('/admin');
+      else if (user.role === 'staff') navigate('/staff');
+      else navigate('/member');
+    }
+  }, [user, navigate]);
 
   const [role, setRole] = useState<'member' | 'staff' | 'admin'>('member');
   const [authMethod, setAuthMethod] = useState<'magic' | 'password'>('magic');
@@ -39,11 +48,11 @@ const LoginPage = () => {
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) return;
     setLoading(true); setError('');
-    setTimeout(() => {
-      setError('Password login will be enabled once configured in Supabase Auth.');
-      setLoading(false);
-    }, 800);
+    const { error } = await signInWithPassword(email, password);
+    if (error) setError(error.message);
+    setLoading(false);
   };
 
   const handleGoogleLogin = () => {
@@ -204,7 +213,7 @@ const LoginPage = () => {
                 <div className="form-group">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <label className="form-label">Password</label>
-                    <a href="#" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Forgot?</a>
+                    <Link to="/forgot-password" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Forgot?</Link>
                   </div>
                   <div style={{ position: 'relative' }}>
                     <Key size={14} style={{ position: 'absolute', left: 'var(--sp-4)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -254,3 +263,10 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
+
+
+
+
+
+

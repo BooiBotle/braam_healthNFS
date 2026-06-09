@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Users, FileText, Activity, Search, Calendar, ChevronRight } from 'lucide-react';
+import { Users, FileText, Activity, Search, ChevronRight } from 'lucide-react';
 
 const StaffDashboard = () => {
   const { user } = useAuth();
   const [pendingApplications, setPendingApplications] = useState<any[]>([]);
   const [todayConsultations, setTodayConsultations] = useState<any[]>([]);
+  const [activeMembersCount, setActiveMembersCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +38,15 @@ const StaffDashboard = () => {
 
       if (consultations) setTodayConsultations(consultations);
 
+      // Fetch active members count
+      const { count: membersCount } = await supabase
+        .from('members')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', user.clinicId)
+        .eq('status', 'active');
+        
+      if (membersCount !== null) setActiveMembersCount(membersCount);
+
       setLoading(false);
     };
 
@@ -54,7 +64,7 @@ const StaffDashboard = () => {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--sp-8)' }}>
+      <div className="responsive-header" style={{ marginBottom: 'var(--sp-8)' }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-3xl)', letterSpacing: '-0.02em', marginBottom: 'var(--sp-1)' }}>
             Staff Portal
@@ -76,7 +86,7 @@ const StaffDashboard = () => {
             <Users size={24} />
           </div>
           <div>
-            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--text-heading)', lineHeight: 1.2 }}>142</div>
+            <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--text-heading)', lineHeight: 1.2 }}>{activeMembersCount}</div>
             <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', fontWeight: 500 }}>Active Members</div>
           </div>
         </div>
@@ -102,7 +112,7 @@ const StaffDashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--sp-8)' }}>
+      <div className="responsive-grid-sidebar">
         
         {/* Today's Consultations */}
         <div>
@@ -162,7 +172,7 @@ const StaffDashboard = () => {
               pendingApplications.map(app => (
                 <div key={app.id} className="card card-interactive" style={{ padding: 'var(--sp-4)', background: 'var(--bg-surface-sunken)', border: '1px solid var(--border)', cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--sp-2)' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{app.first_name} {app.last_name}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{app.applicant_name || 'Unknown Applicant'}</div>
                     <span className="section-badge section-badge-gold" style={{ fontSize: '10px' }}>NEW</span>
                   </div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginBottom: 'var(--sp-3)' }}>
@@ -181,3 +191,6 @@ const StaffDashboard = () => {
 };
 
 export default StaffDashboard;
+
+
+

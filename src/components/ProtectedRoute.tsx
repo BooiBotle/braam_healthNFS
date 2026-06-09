@@ -1,4 +1,3 @@
-import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth, type UserRole } from '../context/AuthContext';
 
@@ -25,3 +24,4 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
 };
 
 export default ProtectedRoute;
+

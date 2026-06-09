@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Check, Heart, Stethoscope, Briefcase, Pill, User, X, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -7,7 +6,7 @@ import Footer from '../../components/Footer';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' as any } },
 };
 const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
 
@@ -100,7 +99,7 @@ const PlansPage = () => {
             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
             className="plans-grid"
           >
-            {plans.map((plan, index) => (
+            {plans.map((plan) => (
               <motion.div
                 key={plan.name} variants={fadeUp}
                 className="card card-interactive"
@@ -245,3 +244,6 @@ const PlansPage = () => {
 };
 
 export default PlansPage;
+
+
+

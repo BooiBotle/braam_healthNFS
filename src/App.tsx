@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
@@ -15,6 +14,8 @@ import PopiaPage from './pages/public/PopiaPage';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import ApplyPage from './pages/auth/ApplyPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import UpdatePasswordPage from './pages/auth/UpdatePasswordPage';
 
 // Layout & Protected Route
 import PortalLayout from './layouts/PortalLayout';
@@ -23,6 +24,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Dashboards
 import MemberDashboard from './pages/member/MemberDashboard';
 import StaffDashboard from './pages/staff/StaffDashboard';
+import VerifyMember from './pages/staff/VerifyMember';
+import ApplicationsList from './pages/staff/ApplicationsList';
+import AppointmentsList from './pages/staff/AppointmentsList';
+import ConsultationsList from './pages/staff/ConsultationsList';
+import MedicationRegister from './pages/staff/MedicationRegister';
+import PeakHours from './pages/staff/PeakHours';
+import StaffProfile from './pages/staff/StaffProfile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 
 function App() {
@@ -43,6 +51,8 @@ function App() {
             {/* Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/apply" element={<ApplyPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/update-password" element={<UpdatePasswordPage />} />
 
             {/* Member Portal */}
             <Route path="/member" element={<ProtectedRoute allowedRoles={['member']} />}>
@@ -57,7 +67,13 @@ function App() {
             <Route path="/staff" element={<ProtectedRoute allowedRoles={['staff']} />}>
               <Route element={<PortalLayout />}>
                 <Route index element={<StaffDashboard />} />
-                {/* Other staff routes would go here */}
+                <Route path="verify" element={<VerifyMember />} />
+                <Route path="applications" element={<ApplicationsList />} />
+                <Route path="appointments" element={<AppointmentsList />} />
+                <Route path="consultations" element={<ConsultationsList />} />
+                <Route path="medication" element={<MedicationRegister />} />
+                <Route path="peak-hours" element={<PeakHours />} />
+                <Route path="profile" element={<StaffProfile />} />
                 <Route path="*" element={<Navigate to="/staff" replace />} />
               </Route>
             </Route>
@@ -82,3 +98,4 @@ function App() {
 }
 
 export default App;
+

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
@@ -21,6 +21,10 @@ interface AuthContextType {
   loginWithOtp: (email: string) => Promise<{ error: Error | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   signup: (name: string, email: string, role: UserRole) => void; 
+  signUpWithPassword: (email: string, password: string) => Promise<{ data: any, error: Error | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithOAuth: (provider: 'google') => Promise<{ error: Error | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   logout: () => void;
   loading: boolean;
 }
@@ -110,12 +114,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('Signup called', { name, email, role });
   };
 
+  const signUpWithPassword = async (email: string, password: string) => {
+    return await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      }
+    });
+  };
+
+  const signInWithPassword = async (email: string, password: string) => {
+    return await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+  };
+
+  const signInWithOAuth = async (provider: 'google') => {
+    return await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+      }
+    });
+  };
+
+  const resetPasswordForEmail = async (email: string) => {
+    return await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, loginWithOtp, verifyOtp, signup, logout, loading }}>
+    <AuthContext.Provider value={{ session, user, loginWithOtp, verifyOtp, signup, signUpWithPassword, signInWithPassword, signInWithOAuth, resetPasswordForEmail, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
@@ -128,3 +164,6 @@ export const useAuth = () => {
   }
   return context;
 };
+
+
+
