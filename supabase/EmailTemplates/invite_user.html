@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You've Been Invited</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #1e293b; -webkit-font-smoothing: antialiased; }
+    .wrapper { padding: 40px 20px; width: 100%; box-sizing: border-box; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; }
+    .header { background-color: #ffffff; padding: 40px 40px 20px 40px; text-align: center; }
+    .header img { max-width: 220px; height: auto; }
+    .hero { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px 40px; text-align: center; border-bottom: 4px solid #d4af37; }
+    .hero h1 { margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .hero p { margin: 10px 0 0 0; color: #cbd5e1; font-size: 16px; }
+    .content { padding: 40px; line-height: 1.6; }
+    .content h2 { margin-top: 0; color: #0f172a; font-size: 22px; font-weight: 700; }
+    .content p { color: #475569; font-size: 16px; margin-bottom: 24px; }
+    .btn-container { text-align: center; margin: 40px 0; }
+    .btn { display: inline-block; background-color: #d4af37; color: #0f172a !important; text-decoration: none; padding: 16px 36px; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(212, 175, 55, 0.3); transition: background-color 0.2s; }
+    .btn:hover { background-color: #c5a880; }
+    .fallback { font-size: 13px; color: #64748b; background: #f8fafc; padding: 16px; border-radius: 8px; word-break: break-all; text-align: center; }
+    .footer { background-color: #0f172a; padding: 30px 40px; text-align: center; font-size: 13px; color: #94a3b8; }
+    .footer a { color: #d4af37; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <img src="https://nfs.insure/img/NFS_Insure_Logo_Blue_Mustard_Combination@2x.png" alt="NFS Insure Logo">
+      </div>
+      <div class="hero">
+        <h1>Exclusive Invitation</h1>
+        <p>Join the Braam Health Centre Network</p>
+      </div>
+      <div class="content">
+        <h2>You're Invited!</h2>
+        <p>You have been formally invited to join the Braam Health Centre portal managed by NFS Insure. As a member or staff user, you will gain immediate access to our secure digital infrastructure.</p>
+        
+        <p>Accept your invitation below to set up your profile, secure your password, and begin exploring our premium healthcare services.</p>
+        
+        <div class="btn-container">
+          <a href="{{ .ConfirmationURL }}" class="btn">Accept Invitation</a>
+        </div>
+        
+        <div class="fallback">
+          If the button doesn't work, copy and paste this URL into your browser:<br><br>
+          <a href="{{ .ConfirmationURL }}" style="color: #3b82f6;">{{ .ConfirmationURL }}</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p>Need help? Contact our support team at <a href="mailto:info@nfs.insure">info@nfs.insure</a></p>
+        <p>Eagle Canyon Office Park, Johannesburg, South Africa</p>
+        <p style="margin-top: 20px; font-size: 11px; color: #64748b;">&copy; 2026 NFS Insure. All rights reserved. If you were not expecting this, please ignore it.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
