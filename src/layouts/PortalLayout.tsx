@@ -5,7 +5,10 @@ import { motion } from 'framer-motion';
 import { 
   LogOut, Shield, LayoutDashboard, CreditCard, Activity, 
   Users, Calendar, FileText, Settings, Menu, X,
-  Search, Pill, BarChart2, User
+  Search, Pill, BarChart2,
+  UserPlus, FileSignature, ShieldCheck, Image,
+  Wallet, RefreshCcw, ArrowRightLeft, TrendingUp,
+  List, LineChart, Download, Link as LinkIcon, Lock, PenTool
 } from 'lucide-react';
 
 const PortalLayout = () => {
@@ -47,8 +50,29 @@ const PortalLayout = () => {
 
   const adminLinks = [
     { category: 'Overview', name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={16}/> },
-    { category: 'Management', name: 'Members', path: '/admin/members', icon: <Users size={16}/> },
-    { category: 'Management', name: 'Applications', path: '/admin/applications', icon: <FileText size={16}/> },
+    
+    { category: 'People', name: 'Members', path: '/admin/members', icon: <Users size={16}/> },
+    { category: 'People', name: 'Applications', path: '/admin/applications', icon: <FileText size={16}/> },
+    { category: 'People', name: 'Onboarding', path: '/admin/onboarding', icon: <UserPlus size={16}/> },
+    { category: 'People', name: 'Appointments', path: '/admin/appointments', icon: <Calendar size={16}/> },
+    
+    { category: 'Financials', name: 'Debit Orders', path: '/admin/debit-orders', icon: <Wallet size={16}/> },
+    { category: 'Financials', name: 'Mandates', path: '/admin/mandates', icon: <FileSignature size={16}/> },
+    { category: 'Financials', name: 'Reconciliation', path: '/admin/reconciliation', icon: <RefreshCcw size={16}/> },
+    { category: 'Financials', name: 'Plan Changes', path: '/admin/plan-changes', icon: <ArrowRightLeft size={16}/> },
+    
+    { category: 'Compliance & Risk', name: 'KYC Queue', path: '/admin/kyc', icon: <ShieldCheck size={16}/> },
+    { category: 'Compliance & Risk', name: 'POPIA Register', path: '/admin/popia', icon: <Lock size={16}/> },
+    { category: 'Compliance & Risk', name: 'Signed Agreements', path: '/admin/agreements', icon: <PenTool size={16}/> },
+    { category: 'Compliance & Risk', name: 'Audit Log', path: '/admin/audit', icon: <List size={16}/> },
+    
+    { category: 'Operations', name: 'Cards', path: '/admin/cards', icon: <CreditCard size={16}/> },
+    { category: 'Operations', name: 'Cards Gallery', path: '/admin/cards-gallery', icon: <Image size={16}/> },
+    { category: 'Operations', name: 'Cross-Sell Pipeline', path: '/admin/cross-sell', icon: <TrendingUp size={16}/> },
+    
+    { category: 'System', name: 'Retention Report', path: '/admin/retention', icon: <LineChart size={16}/> },
+    { category: 'System', name: 'Reports & Exports', path: '/admin/reports', icon: <Download size={16}/> },
+    { category: 'System', name: 'Integrations', path: '/admin/integrations', icon: <LinkIcon size={16}/> },
     { category: 'System', name: 'Settings', path: '/admin/settings', icon: <Settings size={16}/> },
   ];
 
