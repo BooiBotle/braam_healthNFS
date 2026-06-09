@@ -49,6 +49,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .eq('id', sessionUser.id)
       .single();
 
+    if (error) {
+      console.error("AuthContext fetchProfile Error:", error);
+    }
+
     if (profile) {
       setUser({
         id: sessionUser.id,
@@ -59,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         clinicId: profile.clinic_id
       });
     } else {
-      // Fallback if profile not created yet
+      // Fallback if profile not created yet or RLS blocked read
       setUser({
         id: sessionUser.id,
         name: sessionUser.email?.split('@')[0] || 'User',
