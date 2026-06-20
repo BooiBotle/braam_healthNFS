@@ -32,10 +32,16 @@ const PortalLayout = () => {
   const memberLinks = [
     { category: 'Home', name: 'Dashboard', path: '/member', icon: <LayoutDashboard size={16}/> },
     { category: 'Home', name: 'My Card', path: '/member/card', icon: <CreditCard size={16}/> },
+    { category: 'Home', name: 'Clinic Info', path: '/member/clinic-info', icon: <Activity size={16}/> },
     { category: 'Health', name: 'Consultations', path: '/member/consultations', icon: <Activity size={16}/> },
     { category: 'Health', name: 'Appointments', path: '/member/appointments', icon: <Calendar size={16}/> },
+    { category: 'Account', name: 'Profile', path: '/member/profile', icon: <Users size={16}/> },
     { category: 'Account', name: 'Dependants', path: '/member/dependants', icon: <Users size={16}/> },
-    { category: 'Account', name: 'Debit Orders', path: '/member/debits', icon: <FileText size={16}/> },
+    { category: 'Account', name: 'Change Plan', path: '/member/upgrade', icon: <ArrowRightLeft size={16}/> },
+    { category: 'Financials', name: 'Statement', path: '/member/statement', icon: <FileText size={16}/> },
+    { category: 'Financials', name: 'Debit Orders', path: '/member/debits', icon: <Wallet size={16}/> },
+    { category: 'Financials', name: 'Payments', path: '/member/payments', icon: <CreditCard size={16}/> },
+    { category: 'Compliance', name: 'KYC & Documents', path: '/member/kyc', icon: <ShieldCheck size={16}/> },
   ];
 
   const staffLinks = [
