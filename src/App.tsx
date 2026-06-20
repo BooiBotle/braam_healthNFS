@@ -23,6 +23,17 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Dashboards
 import MemberDashboard from './pages/member/MemberDashboard';
+import Appointments from './pages/member/Appointments';
+import ClinicInfo from './pages/member/ClinicInfo';
+import Consultations from './pages/member/Consultations';
+import DebitOrders from './pages/member/DebitOrders';
+import Dependants from './pages/member/Dependants';
+import KYC from './pages/member/KYC';
+import MyCard from './pages/member/MyCard';
+import Payments from './pages/member/Payments';
+import Profile from './pages/member/Profile';
+import Statement from './pages/member/Statement';
+import UpgradePlan from './pages/member/UpgradePlan';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import VerifyMember from './pages/staff/VerifyMember';
 import ApplicationsList from './pages/staff/ApplicationsList';
@@ -78,7 +89,17 @@ function App() {
             <Route path="/member" element={<ProtectedRoute allowedRoles={['member']} />}>
               <Route element={<PortalLayout />}>
                 <Route index element={<MemberDashboard />} />
-                {/* Other member routes would go here */}
+                <Route path="card" element={<MyCard />} />
+                <Route path="consultations" element={<Consultations />} />
+                <Route path="appointments" element={<Appointments />} />
+                <Route path="dependants" element={<Dependants />} />
+                <Route path="debits" element={<DebitOrders />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="upgrade" element={<UpgradePlan />} />
+                <Route path="statement" element={<Statement />} />
+                <Route path="kyc" element={<KYC />} />
+                <Route path="clinic-info" element={<ClinicInfo />} />
+                <Route path="profile" element={<Profile />} />
                 <Route path="*" element={<Navigate to="/member" replace />} />
               </Route>
             </Route>
