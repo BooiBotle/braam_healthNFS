@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, CreditCard, User, Calendar, ShieldCheck } from 'lucide-react';
+import { Search, CreditCard, User, Calendar, ShieldCheck, QrCode, Activity } from 'lucide-react';
+import QRCode from 'react-qr-code';
 
 const AdminCardsGallery = () => {
   const [cards, setCards] = useState<any[]>([]);
@@ -94,7 +95,7 @@ const AdminCardsGallery = () => {
           <div style={{ color: '#64748b', marginTop: '0.5rem' }}>Try adjusting your search criteria.</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '2rem' }}>
           {filteredCards.map(card => {
             const isDependant = !!card.dependants;
             const profile = card.members?.profiles;
@@ -104,67 +105,117 @@ const AdminCardsGallery = () => {
             
             // Format card number to look like XXXX XXXX XXXX XXXX
             const formattedCardNum = card.card_number?.match(/.{1,4}/g)?.join(' ') || card.card_number;
+            
+            // Create a JSON payload for the QR Code
+            const qrPayload = JSON.stringify({
+              v: 1,
+              n: holderName,
+              c: card.card_number,
+              t: isDependant ? 'DEP' : 'MAIN',
+              s: card.status
+            });
 
             return (
               <motion.div 
-                whileHover={{ y: -4, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                whileHover={{ y: -8, boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.5)' }}
                 key={card.id} 
                 style={{ 
-                  background: 'linear-gradient(135deg, #1c2340 0%, #0f172a 100%)', 
-                  borderRadius: '16px', padding: '1.5rem', color: '#ffffff',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden',
-                  aspectRatio: '1.586/1' // Standard credit card ratio
+                  background: 'linear-gradient(135deg, #1c2340 0%, #0b1120 100%)', 
+                  borderRadius: '24px', color: '#ffffff',
+                  boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.4)', position: 'relative', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column', minHeight: '240px', border: '1px solid rgba(255,255,255,0.08)'
                 }}
               >
-                {/* Background Pattern */}
-                <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '60%', height: '140%', background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%)', transform: 'rotate(15deg)' }} />
+                {/* Background Decorators */}
+                <div style={{ position: 'absolute', top: '-30%', right: '-10%', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%)', borderRadius: '50%', filter: 'blur(20px)' }} />
+                <div style={{ position: 'absolute', bottom: '-20%', left: '-20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(59,130,246,0.1) 0%, rgba(0,0,0,0) 70%)', borderRadius: '50%', filter: 'blur(30px)' }} />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', position: 'relative', zIndex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: '1.125rem', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <ShieldCheck size={20} color="var(--gold)" />
-                    NFS INSURE
-                  </div>
-                  {card.status === 'active' && (
-                    <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', letterSpacing: '1px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '0.25rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
-                      Active
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ position: 'relative', zIndex: 1, marginBottom: '1.5rem' }}>
-                  <div style={{ fontSize: '1.25rem', letterSpacing: '3px', fontFamily: 'monospace', fontWeight: 500, opacity: 0.9 }}>
-                    {formattedCardNum}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {profile?.avatar_url && !isDependant ? (
-                      <img src={profile.avatar_url} alt="Avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)' }} />
-                    ) : (
-                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <User size={16} />
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.7, marginBottom: '2px' }}>
-                        {isDependant ? 'Dependant' : 'Cardholder'}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>
-                        {holderName}
-                      </div>
-                    </div>
-                  </div>
+                <div style={{ display: 'flex', padding: '1.5rem', flex: 1, gap: '1.5rem', position: 'relative', zIndex: 2 }}>
                   
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.7, marginBottom: '2px' }}>
-                      Valid Thru
+                  {/* Left Column: Details */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                      <div style={{ background: 'linear-gradient(135deg, var(--gold), #b48e2d)', padding: '6px', borderRadius: '8px' }}>
+                        <ShieldCheck size={20} color="#fff" />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '2px', color: '#fff', lineHeight: 1 }}>
+                          NFS INSURE
+                        </div>
+                        <div style={{ fontSize: '0.625rem', color: 'var(--gold)', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px', fontWeight: 600 }}>
+                          Braam Health Plus
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>
-                      {card.expires_at ? new Date(card.expires_at).toLocaleDateString('en-US', { month: '2-digit', year: '2-digit' }) : '12/99'}
+
+                    <div style={{ margin: '1rem 0' }}>
+                      <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#94a3b8', marginBottom: '4px' }}>
+                        Card Number
+                      </div>
+                      <div style={{ fontSize: '1.35rem', letterSpacing: '4px', fontFamily: '"Space Mono", monospace', fontWeight: 500, color: '#f8fafc', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                        {formattedCardNum}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#94a3b8', marginBottom: '2px' }}>
+                          Cardholder
+                        </div>
+                        <div style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                          {holderName}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#94a3b8', marginBottom: '2px' }}>
+                          Valid Thru
+                        </div>
+                        <div style={{ fontSize: '0.875rem', fontFamily: '"Space Mono", monospace', color: '#fff' }}>
+                          {card.expires_at ? new Date(card.expires_at).toLocaleDateString('en-US', { month: '2-digit', year: '2-digit' }) : '12/99'}
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Right Column: QR & Status */}
+                  <div style={{ width: '110px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.5rem' }}>
+                    <div style={{ 
+                      fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', 
+                      background: card.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
+                      color: card.status === 'active' ? '#34d399' : '#f87171', 
+                      padding: '4px 10px', borderRadius: '20px', fontWeight: 700,
+                      border: `1px solid ${card.status === 'active' ? 'rgba(52, 211, 153, 0.3)' : 'rgba(248, 113, 113, 0.3)'}`
+                    }}>
+                      {card.status}
+                    </div>
+
+                    <div style={{ background: '#ffffff', padding: '8px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                      <QRCode 
+                        value={qrPayload} 
+                        size={85}
+                        bgColor="#ffffff"
+                        fgColor="#0f172a"
+                        level="Q"
+                      />
+                    </div>
+                    
+                    <div style={{ fontSize: '0.6rem', color: '#64748b', textAlign: 'right', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.5rem' }}>
+                      <QrCode size={10} /> SCANNABLE
+                    </div>
+                  </div>
+
                 </div>
+                
+                {/* Bottom Strip */}
+                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: '#94a3b8' }}>
+                    <User size={12} /> {isDependant ? 'Dependant Member' : 'Primary Member'}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: '#94a3b8' }}>
+                    <Activity size={12} /> ID: {profile?.sa_id_number || 'N/A'}
+                  </div>
+                </div>
+
               </motion.div>
             );
           })}

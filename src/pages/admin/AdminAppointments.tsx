@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, Calendar as CalendarIcon, Clock, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { User, Calendar as CalendarIcon, Clock, Filter, Phone, Activity, Search } from 'lucide-react';
 const AdminAppointments = () => {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<string>('');
+  const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
 
   useEffect(() => {
     fetchAppointments();
@@ -68,7 +69,8 @@ const AdminAppointments = () => {
   };
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -195,17 +197,17 @@ const AdminAppointments = () => {
                         </span>
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <Link 
-                          to={`/admin/appointments/${apt.id}`}
+                        <button 
+                          onClick={() => setSelectedAppointment(apt)}
                           style={{ 
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             padding: '0.375rem 0.75rem', borderRadius: '6px', 
                             background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
-                            fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none', transition: 'all 0.2s'
+                            fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s'
                           }}
                         >
                           Manage
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -217,6 +219,93 @@ const AdminAppointments = () => {
         
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedAppointment}
+        onClose={() => setSelectedAppointment(null)}
+        title="Manage Appointment"
+        maxWidth="600px"
+      >
+        {selectedAppointment && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '56px', height: '56px', borderRadius: '50%', 
+                background: '#e0e7ff', color: '#4f46e5', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.25rem', fontWeight: 600
+              }}>
+                <CalendarIcon size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.125rem', color: '#0f172a' }}>
+                  {new Date(selectedAppointment.appointment_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Clock size={14} /> {selectedAppointment.appointment_time.substring(0, 5)}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <User size={14} /> Patient Name
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedAppointment.members?.profiles?.first_name} {selectedAppointment.members?.profiles?.last_name}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Phone size={14} /> Contact
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedAppointment.members?.profiles?.phone || 'No phone provided'}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Activity size={14} /> Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>
+                  {selectedAppointment.status.replace('_', ' ')}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <User size={14} /> ID Number
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedAppointment.members?.profiles?.sa_id_number || 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                Reason for Visit
+              </div>
+              <div style={{ color: '#0f172a', fontWeight: 500, lineHeight: 1.5 }}>
+                {selectedAppointment.reason || 'No reason provided.'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                Mark Completed
+              </button>
+              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: 'pointer' }}>
+                Reschedule
+              </button>
+              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 

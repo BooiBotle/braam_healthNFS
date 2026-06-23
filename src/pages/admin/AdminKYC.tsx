@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, ShieldCheck, CheckCircle, XCircle, FileImage, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { Search, ShieldCheck, CheckCircle, XCircle, FileImage, Download, User, Calendar, Activity, AlertCircle } from 'lucide-react';
 const AdminKYC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('pending_review');
+  const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -65,7 +66,8 @@ const AdminKYC = () => {
   };
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -227,17 +229,17 @@ const AdminKYC = () => {
                             </button>
                           </div>
                         ) : (
-                          <Link 
-                            to={`/admin/kyc/${doc.id}`}
+                          <button 
+                            onClick={() => setSelectedDoc(doc)}
                             style={{ 
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                               padding: '0.375rem 0.75rem', borderRadius: '6px', 
                               background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
-                              fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none', transition: 'all 0.2s'
+                              fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s'
                             }}
                           >
                             View
-                          </Link>
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -250,6 +252,83 @@ const AdminKYC = () => {
         
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedDoc}
+        onClose={() => setSelectedDoc(null)}
+        title="KYC Document Review"
+        maxWidth="600px"
+      >
+        {selectedDoc && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '56px', height: '56px', borderRadius: '50%', 
+                background: '#f8fafc', border: '1px solid #e2e8f0', color: '#0f172a', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem', fontWeight: 600
+              }}>
+                <FileImage size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', textTransform: 'capitalize' }}>
+                  {selectedDoc.doc_type.replace('_', ' ')}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                  Uploaded on {new Date(selectedDoc.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <User size={14} /> Member
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedDoc.members?.profiles?.first_name} {selectedDoc.members?.profiles?.last_name}
+                </div>
+              </div>
+              
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Calendar size={14} /> ID Number
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedDoc.members?.profiles?.sa_id_number || 'N/A'}
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Activity size={14} /> Document Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>
+                  {selectedDoc.status.replace('_', ' ')}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: '200px', background: '#f1f5f9', borderRadius: '8px', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', gap: '0.5rem' }}>
+              <FileImage size={32} color="#94a3b8" />
+              <span>Document preview not available in this environment.</span>
+              <span style={{ fontSize: '0.75rem' }}>{selectedDoc.file_name}</span>
+            </div>
+
+            {selectedDoc.status === 'pending_review' && (
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 600, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <CheckCircle size={18} /> Approve
+                </button>
+                <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fff', color: '#ef4444', fontWeight: 600, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <XCircle size={18} /> Reject
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 
