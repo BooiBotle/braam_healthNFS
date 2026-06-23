@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Users, FileText, Activity, Search, ChevronRight, AlertTriangle, X, CheckCircle } from 'lucide-react';
-
+import { Users, FileText, Activity, Search, ChevronRight, AlertTriangle, CheckCircle } from 'lucide-react';
+import Modal from '../../components/Modal';
 const StaffDashboard = () => {
   const { user } = useAuth();
   const [pendingApplications, setPendingApplications] = useState<any[]>([]);
@@ -268,79 +268,57 @@ const StaffDashboard = () => {
 
       </div>
 
-      {/* Flag Details Modal */}
-      {selectedFlag && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
-        }}>
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            style={{
-              background: '#fff', width: '100%', maxWidth: '500px',
-              borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-            }}
-          >
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef2f2' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ padding: '0.5rem', background: '#ef4444', color: '#fff', borderRadius: '8px' }}>
-                  <AlertTriangle size={20} />
+      <Modal 
+        isOpen={!!selectedFlag}
+        onClose={() => setSelectedFlag(null)}
+        title="Review Flagged Activity"
+        maxWidth="500px"
+      >
+        {selectedFlag && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+              <div style={{ padding: '0.5rem', background: '#ef4444', color: '#fff', borderRadius: '8px' }}>
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#991b1b', marginBottom: '0.25rem' }}>
+                  {selectedFlag.flagged_reason}
                 </div>
-                <div>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#991b1b', margin: 0 }}>Review Flagged Activity</h2>
+                <div style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+                  {selectedFlag.type === 'consultation' ? 'Consultation Limit Exceeded/Flagged' : 'Medication Dispense Flagged'}
                 </div>
               </div>
-              <button onClick={() => setSelectedFlag(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
-                <X size={24} />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Patient Name</label>
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--navy)' }}>{selectedFlag.members?.full_name}</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Card: {selectedFlag.members?.card_number || 'N/A'}</div>
+            </div>
+            
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Activity Date</label>
+              <div style={{ fontSize: '0.875rem', color: 'var(--navy)' }}>{new Date(selectedFlag.date).toLocaleString()}</div>
+            </div>
+
+            {selectedFlag.dispense_note && (
+              <div style={{ padding: '0.75rem', background: 'var(--bg-surface-sunken)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Dispense Note</label>
+                <div style={{ fontSize: '0.875rem', color: 'var(--navy)', marginTop: '4px' }}>{selectedFlag.dispense_note}</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button 
+                onClick={handleResolveFlag}
+                style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '8px', background: '#10b981', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+              >
+                <CheckCircle size={18} /> Mark as Resolved
               </button>
             </div>
-
-            <div style={{ padding: '1.5rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Patient Name</label>
-                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a' }}>{selectedFlag.members?.full_name}</div>
-                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Card: {selectedFlag.members?.card_number || 'N/A'}</div>
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Activity Type</label>
-                <div style={{ fontSize: '0.875rem', color: '#0f172a' }}>{selectedFlag.type === 'consultation' ? 'Consultation Limit Exceeded/Flagged' : 'Medication Dispense Flagged'}</div>
-                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>Date: {new Date(selectedFlag.date).toLocaleString()}</div>
-              </div>
-
-              {selectedFlag.dispense_note && (
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Dispense Note</label>
-                  <div style={{ fontSize: '0.875rem', color: '#0f172a', marginTop: '4px' }}>{selectedFlag.dispense_note}</div>
-                </div>
-              )}
-
-              <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#991b1b', textTransform: 'uppercase' }}>Flag Reason</label>
-                <div style={{ fontSize: '0.875rem', color: '#7f1d1d', marginTop: '4px', fontWeight: 500 }}>{selectedFlag.flagged_reason}</div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                <button 
-                  onClick={() => setSelectedFlag(null)}
-                  style={{ padding: '0.75rem 1rem', borderRadius: '8px', background: '#fff', border: '1px solid #e2e8f0', color: '#64748b', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleResolveFlag}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '8px', background: '#10b981', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  <CheckCircle size={18} /> Mark as Resolved
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+          </div>
+        )}
+      </Modal>
 
     </motion.div>
   );

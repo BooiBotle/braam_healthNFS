@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, RefreshCcw, Download, CheckCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { Search, RefreshCcw, Download, CheckCircle, Clock, FileText, Check, AlertCircle, Percent } from 'lucide-react';
 const AdminReconciliation = () => {
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBatch, setSelectedBatch] = useState<any | null>(null);
 
   useEffect(() => {
     fetchBatches();
@@ -51,7 +52,8 @@ const AdminReconciliation = () => {
   });
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -187,17 +189,17 @@ const AdminReconciliation = () => {
                         )}
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <Link 
-                          to={`/admin/reconciliation/${batch.id}`}
+                        <button 
+                          onClick={() => setSelectedBatch(batch)}
                           style={{ 
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             padding: '0.375rem 0.75rem', borderRadius: '6px', 
                             background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
-                            fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none', transition: 'all 0.2s'
+                            fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s'
                           }}
                         >
                           View
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -209,6 +211,96 @@ const AdminReconciliation = () => {
         
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedBatch}
+        onClose={() => setSelectedBatch(null)}
+        title="Reconciliation Batch Summary"
+        maxWidth="650px"
+      >
+        {selectedBatch && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '56px', height: '56px', borderRadius: '50%', 
+                background: '#f8fafc', border: '1px solid #e2e8f0', color: '#0f172a', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem', fontWeight: 600
+              }}>
+                <FileText size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
+                  {new Date(selectedBatch.batch_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                  Total Expected: R {(selectedBatch.total_expected_cents / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1.25rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#166534', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  <Check size={16} /> Total Collected
+                </div>
+                <div style={{ color: '#14532d', fontSize: '1.5rem', fontWeight: 700 }}>
+                  R {(selectedBatch.total_collected_cents / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#166534', marginTop: '0.25rem' }}>
+                  {selectedBatch.success_count} successful transactions
+                </div>
+              </div>
+              
+              <div style={{ padding: '1.25rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#991b1b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  <AlertCircle size={16} /> Total Failed
+                </div>
+                <div style={{ color: '#7f1d1d', fontSize: '1.5rem', fontWeight: 700 }}>
+                  R {(selectedBatch.total_failed_cents / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#991b1b', marginTop: '0.25rem' }}>
+                  {selectedBatch.failed_count} failed transactions
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Percent size={14} /> Collection Rate
+                </div>
+                <div style={{ color: selectedBatch.collection_rate_pct >= 90 ? '#10b981' : selectedBatch.collection_rate_pct >= 75 ? '#f59e0b' : '#ef4444', fontWeight: 700, fontSize: '1.25rem' }}>
+                  {selectedBatch.collection_rate_pct}%
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Clock size={14} /> Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {selectedBatch.closed_at ? (
+                    <><CheckCircle size={16} color="#10b981" /> Closed</>
+                  ) : (
+                    <><Clock size={16} color="#f59e0b" /> Pending Action</>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {!selectedBatch.closed_at && (
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#1c2340', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                  Run Retry Batch
+                </button>
+                <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: 'pointer' }}>
+                  Close Month
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 

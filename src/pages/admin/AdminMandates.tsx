@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, FileSignature, Filter, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { Search, FileSignature, Filter, Download, User, Activity, CreditCard, Clock } from 'lucide-react';
 const AdminMandates = () => {
   const [mandates, setMandates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedMandate, setSelectedMandate] = useState<any | null>(null);
 
   useEffect(() => {
     fetchMandates();
@@ -66,7 +67,8 @@ const AdminMandates = () => {
   };
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -217,17 +219,17 @@ const AdminMandates = () => {
                         {new Date(mandate.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <Link 
-                          to={`/admin/mandates/${mandate.id}`}
+                        <button 
+                          onClick={() => setSelectedMandate(mandate)}
                           style={{ 
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             padding: '0.375rem 0.75rem', borderRadius: '6px', 
                             background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
-                            fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none', transition: 'all 0.2s'
+                            fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s'
                           }}
                         >
                           View
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -239,6 +241,87 @@ const AdminMandates = () => {
         
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedMandate}
+        onClose={() => setSelectedMandate(null)}
+        title="Mandate Details"
+        maxWidth="600px"
+      >
+        {selectedMandate && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '56px', height: '56px', borderRadius: '50%', 
+                background: selectedMandate.status === 'signed' ? '#dcfce7' : selectedMandate.status === 'cancelled' ? '#fee2e2' : '#f1f5f9', 
+                color: selectedMandate.status === 'signed' ? '#16a34a' : selectedMandate.status === 'cancelled' ? '#ef4444' : '#64748b', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem', fontWeight: 600
+              }}>
+                <FileSignature size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', textTransform: 'capitalize' }}>
+                  {selectedMandate.mandate_type} Mandate
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                  Created on {new Date(selectedMandate.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <User size={14} /> Member Name
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedMandate.members?.profiles?.first_name} {selectedMandate.members?.profiles?.last_name}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <CreditCard size={14} /> Bank Account
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedMandate.bank_name}<br />
+                  <span style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                    {(selectedMandate.account_number || '').length > 4 ? `••••${(selectedMandate.account_number || '').slice(-4)}` : selectedMandate.account_number}
+                  </span>
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Activity size={14} /> Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>
+                  {selectedMandate.status}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Clock size={14} /> ID Number
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedMandate.members?.profiles?.sa_id_number || 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: 'pointer' }}>
+                Resend Auth Request
+              </button>
+              {selectedMandate.status !== 'cancelled' && (
+                <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
+                  Cancel Mandate
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 

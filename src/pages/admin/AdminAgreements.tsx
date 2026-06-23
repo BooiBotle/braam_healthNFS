@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, FileSignature, Download, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { Search, FileSignature, Download, Filter, User, Calendar, Activity } from 'lucide-react';
 const AdminAgreements = () => {
   const [agreements, setAgreements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedAgreement, setSelectedAgreement] = useState<any | null>(null);
 
   useEffect(() => {
     fetchAgreements();
@@ -64,7 +65,8 @@ const AdminAgreements = () => {
   };
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -199,17 +201,17 @@ const AdminAgreements = () => {
                         {agreement.signed_at ? new Date(agreement.signed_at).toLocaleDateString() : 'N/A'}
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <Link 
-                          to={`/admin/agreements/${agreement.id}`}
+                        <button 
+                          onClick={() => setSelectedAgreement(agreement)}
                           style={{ 
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             padding: '0.375rem 0.75rem', borderRadius: '6px', 
                             background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
-                            fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none', transition: 'all 0.2s'
+                            fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s'
                           }}
                         >
                           View Document
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -221,6 +223,80 @@ const AdminAgreements = () => {
         
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedAgreement}
+        onClose={() => setSelectedAgreement(null)}
+        title="Agreement Details"
+        maxWidth="600px"
+      >
+        {selectedAgreement && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ 
+                width: '56px', height: '56px', borderRadius: '50%', 
+                background: '#f8fafc', border: '1px solid #e2e8f0', color: '#0f172a', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem', fontWeight: 600
+              }}>
+                <FileSignature size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
+                  {selectedAgreement.agreement_templates?.title || 'Unknown Agreement'}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                  Version {selectedAgreement.agreement_templates?.version}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <User size={14} /> Member Name
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedAgreement.members?.profiles?.first_name} {selectedAgreement.members?.profiles?.last_name}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                  ID: {selectedAgreement.members?.profiles?.sa_id_number}
+                </div>
+              </div>
+              
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Calendar size={14} /> Signed Date
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedAgreement.signed_at ? new Date(selectedAgreement.signed_at).toLocaleDateString() : 'N/A'}
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', gridColumn: 'span 2' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Activity size={14} /> Agreement Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>
+                  {selectedAgreement.status}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: '200px', background: '#f1f5f9', borderRadius: '8px', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b', gap: '0.5rem' }}>
+              <FileSignature size={32} color="#94a3b8" />
+              <span>Document preview not available in this environment.</span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#1c2340', color: '#fff', fontWeight: 600, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                <Download size={18} /> Download PDF
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 

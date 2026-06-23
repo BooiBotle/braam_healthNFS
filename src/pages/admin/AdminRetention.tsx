@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Users, AlertTriangle, TrendingDown, HeartPulse, PhoneCall } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { Users, AlertTriangle, TrendingDown, HeartPulse, PhoneCall, Mail, MessageSquare } from 'lucide-react';
 const AdminRetention = () => {
   const [activeTab, setActiveTab] = useState('at_risk');
   const [atRiskMembers, setAtRiskMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<any | null>(null);
 
   useEffect(() => {
     fetchRetentionData();
@@ -83,7 +84,8 @@ const AdminRetention = () => {
   };
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -209,16 +211,16 @@ const AdminRetention = () => {
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                          <Link 
-                            to={`/admin/members/${member.id}`}
+                          <button 
+                            onClick={() => setSelectedMember(member)}
                             style={{ 
                               display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.75rem', 
-                              borderRadius: '6px', background: '#f8fafc', color: '#0f172a', textDecoration: 'none',
-                              border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500
+                              borderRadius: '6px', background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
+                              cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500, transition: 'all 0.2s'
                             }}
                           >
                             <HeartPulse size={14} /> Send Wellness Check
-                          </Link>
+                          </button>
                           <button style={{ 
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             width: '28px', height: '28px', borderRadius: '6px', 
@@ -238,6 +240,85 @@ const AdminRetention = () => {
 
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedMember}
+        onClose={() => setSelectedMember(null)}
+        title="Wellness Check Actions"
+        maxWidth="500px"
+      >
+        {selectedMember && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ 
+                width: '48px', height: '48px', borderRadius: '50%', 
+                background: '#f1f5f9', color: '#64748b', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.25rem', fontWeight: 600
+              }}>
+                <HeartPulse size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.125rem', color: '#0f172a' }}>
+                  {selectedMember.member}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                  Risk Factor: {selectedMember.riskScore}% | Last Active: {selectedMember.lastActive}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ color: '#475569', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              <strong style={{ color: '#0f172a' }}>Reason for risk:</strong> {selectedMember.reason}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+              <button style={{ 
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff',
+                cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Mail size={18} color="#3b82f6" />
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>Send Email Check-in</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>Automated "We miss you" template</div>
+                  </div>
+                </div>
+              </button>
+
+              <button style={{ 
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff',
+                cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <MessageSquare size={18} color="#10b981" />
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>Send SMS Offer</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>Discounted consultation voucher</div>
+                  </div>
+                </div>
+              </button>
+
+              <button style={{ 
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff',
+                cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <PhoneCall size={18} color="#8b5cf6" />
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>Log Phone Call</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>Record outcome of direct contact</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 
