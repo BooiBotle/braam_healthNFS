@@ -3,7 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Download, Plus, X, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { User, CreditCard, Shield, Activity, Calendar } from 'lucide-react';
 const AdminMembers = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
@@ -11,7 +12,7 @@ const AdminMembers = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [fetchError, setFetchError] = useState<string | null>(null);
-
+  const [selectedMember, setSelectedMember] = useState<any | null>(null);
   useEffect(() => {
     fetchMembersAndData();
   }, []);
@@ -111,7 +112,8 @@ const AdminMembers = () => {
 
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -274,18 +276,18 @@ const AdminMembers = () => {
                       {new Date(member.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
                     <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                      <Link 
-                        to={`/admin/members/${member.id}`}
+                      <button 
+                        onClick={() => setSelectedMember(member)}
                         style={{ 
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                           padding: '0.5rem 1rem', borderRadius: '8px', 
                           background: '#f8fafc', color: '#1c2340', border: '1px solid #e2e8f0',
-                          fontSize: '0.8125rem', fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s',
+                          fontSize: '0.8125rem', fontWeight: 600, transition: 'all 0.2s', cursor: 'pointer',
                           boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                         }}
                       >
                         View Profile
-                      </Link>
+                      </button>
                     </td>
                   </motion.tr>
                 )})
@@ -297,6 +299,69 @@ const AdminMembers = () => {
 
 
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedMember}
+        onClose={() => setSelectedMember(null)}
+        title="Member Profile"
+        maxWidth="600px"
+      >
+        {selectedMember && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '64px', height: '64px', borderRadius: '50%', 
+                background: 'linear-gradient(135deg, #1c2340 0%, #3b487c 100%)', 
+                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem', fontWeight: 600
+              }}>
+                {(selectedMember.profiles?.first_name?.[0] || '') + (selectedMember.profiles?.last_name?.[0] || '')}
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
+                  {selectedMember.profiles?.first_name} {selectedMember.profiles?.last_name}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                  Joined {new Date(selectedMember.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <User size={14} /> ID Number
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>{selectedMember.profiles?.sa_id_number || selectedMember.profiles?.passport_number || 'N/A'}</div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Shield size={14} /> Active Plan
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>{selectedMember.plans?.name || 'None'}</div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <CreditCard size={14} /> NFC Card Number
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>{selectedMember.card_number || 'Not Issued'}</div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Activity size={14} /> Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>{selectedMember.status}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+               <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: 'pointer' }}>Edit Member</button>
+               <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>Suspend Account</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 

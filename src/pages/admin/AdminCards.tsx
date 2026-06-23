@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, CreditCard, Download, Filter, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { Search, CreditCard, Download, Filter, Eye, User, Calendar, Activity, Info } from 'lucide-react';
 const AdminCards = () => {
   const [cards, setCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedCard, setSelectedCard] = useState<any | null>(null);
 
   useEffect(() => {
     fetchCards();
@@ -71,7 +72,8 @@ const AdminCards = () => {
   };
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -212,17 +214,17 @@ const AdminCards = () => {
                         {card.issued_at ? new Date(card.issued_at).toLocaleDateString() : 'N/A'}
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <Link 
-                          to={`/admin/cards/${card.id}`}
+                        <button 
+                          onClick={() => setSelectedCard(card)}
                           style={{ 
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: '32px', height: '32px', borderRadius: '6px', 
                             background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s', cursor: 'pointer'
                           }}
                         >
                           <Eye size={16} />
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -234,6 +236,105 @@ const AdminCards = () => {
         
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedCard}
+        onClose={() => setSelectedCard(null)}
+        title="Card Details"
+        maxWidth="600px"
+      >
+        {selectedCard && (() => {
+          const isDependant = !!selectedCard.dependants;
+          const profile = selectedCard.members?.profiles;
+          const holderName = isDependant 
+            ? `${selectedCard.dependants.first_name} ${selectedCard.dependants.last_name}`
+            : `${profile?.first_name} ${profile?.last_name}`;
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ 
+                  width: '64px', height: '40px', borderRadius: '6px', 
+                  background: 'linear-gradient(135deg, #1e293b, #0f172a)', color: '#fff', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <CreditCard size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', letterSpacing: '1px' }}>
+                    {selectedCard.card_number}
+                  </h3>
+                  <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                    Status: <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{selectedCard.status}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                    <User size={14} /> Cardholder
+                  </div>
+                  <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                    {holderName}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                    {isDependant ? 'Dependant' : 'Main Member'}
+                  </div>
+                </div>
+
+                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                    <Activity size={14} /> Link to Member
+                  </div>
+                  <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                    {profile?.first_name} {profile?.last_name}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                    ID: {profile?.sa_id_number}
+                  </div>
+                </div>
+
+                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                    <Calendar size={14} /> Issued Date
+                  </div>
+                  <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                    {selectedCard.issued_at ? new Date(selectedCard.issued_at).toLocaleDateString() : 'N/A'}
+                  </div>
+                </div>
+
+                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                    <Info size={14} /> Expiry Date
+                  </div>
+                  <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                    {selectedCard.expires_at ? new Date(selectedCard.expires_at).toLocaleDateString() : 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: 'pointer' }}>
+                  Re-issue Card
+                </button>
+                {selectedCard.status === 'active' && (
+                  <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
+                    Suspend Card
+                  </button>
+                )}
+                {selectedCard.status === 'suspended' && (
+                  <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #10b981', background: '#f0fdf4', color: '#10b981', fontWeight: 600, cursor: 'pointer' }}>
+                    Activate Card
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+    </>
   );
 };
 

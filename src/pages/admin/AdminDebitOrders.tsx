@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, Wallet, Download, RefreshCcw, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
+import Modal from '../../components/Modal';
+import { Search, Wallet, Download, RefreshCcw, AlertCircle, User, Shield, CreditCard, Activity, Calendar } from 'lucide-react';
 const AdminDebitOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -68,7 +69,8 @@ const AdminDebitOrders = () => {
   };
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }}
       style={{ maxWidth: '1200px' }}
@@ -219,17 +221,17 @@ const AdminDebitOrders = () => {
                         </div>
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <Link 
-                          to={`/admin/debit-orders/${order.id}`}
+                        <button 
+                          onClick={() => setSelectedOrder(order)}
                           style={{ 
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             padding: '0.375rem 0.75rem', borderRadius: '6px', 
                             background: '#f8fafc', color: '#0f172a', border: '1px solid #e2e8f0',
-                            fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none', transition: 'all 0.2s'
+                            fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s'
                           }}
                         >
                           Details
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -241,6 +243,92 @@ const AdminDebitOrders = () => {
         
       </div>
     </motion.div>
+
+      <Modal 
+        isOpen={!!selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        title="Debit Order Details"
+        maxWidth="600px"
+      >
+        {selectedOrder && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '56px', height: '56px', borderRadius: '50%', 
+                background: selectedOrder.status === 'success' ? '#dcfce7' : selectedOrder.status === 'failed' ? '#fee2e2' : '#f1f5f9', 
+                color: selectedOrder.status === 'success' ? '#16a34a' : selectedOrder.status === 'failed' ? '#ef4444' : '#64748b', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem', fontWeight: 600
+              }}>
+                <Wallet size={24} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
+                  R {(selectedOrder.amount_cents / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                  Collected on {new Date(selectedOrder.collection_date).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <User size={14} /> Member Name
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedOrder.members?.profiles?.first_name} {selectedOrder.members?.profiles?.last_name}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Shield size={14} /> Plan Name
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedOrder.plans?.name || 'Unknown Plan'}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <Activity size={14} /> Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>
+                  {selectedOrder.status.replace('_', ' ')}
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <RefreshCcw size={14} /> Retries
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {selectedOrder.retry_count} / 3
+                </div>
+              </div>
+            </div>
+
+            {selectedOrder.status === 'failed' && (
+              <div style={{ padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b91c1c', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <AlertCircle size={14} /> Failure Reason
+                </div>
+                <div style={{ color: '#991b1b', fontWeight: 500, lineHeight: 1.5 }}>
+                  {selectedOrder.failure_reason || 'Insufficient funds or account inactive.'}
+                </div>
+              </div>
+            )}
+
+            {selectedOrder.status === 'failed' && selectedOrder.retry_count < 3 && (
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#1c2340', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                  Retry Collection Now
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </>
   );
 };
 

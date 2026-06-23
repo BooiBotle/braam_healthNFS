@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, AlertTriangle, User, Activity } from 'lucide-react';
+import { Search, AlertTriangle, User, Activity, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 const VerifyMember = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [member, setMember] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,6 +19,7 @@ const VerifyMember = () => {
     
     setLoading(true);
     setError('');
+    setSuccessMsg('');
     setMember(null);
 
     try {
@@ -144,14 +149,48 @@ const VerifyMember = () => {
             <button 
               className="btn btn-primary" 
               style={{ width: '100%', marginTop: 'var(--sp-4)' }} 
-              disabled={member.status !== 'active'}
+              disabled={member.status !== 'active' || isRegistering}
               onClick={async () => {
-                 // Register visit logic would go here
-                 alert('Consultation registered successfully!');
+                 if (!user?.clinicId) return;
+                 setIsRegistering(true);
+                 setSuccessMsg('');
+                 setError('');
+
+                 const limitReached = member.plans?.consultations_pm !== -1 && member.consultations_this_month >= member.plans?.consultations_pm;
+
+                 try {
+                   const { error: insertErr } = await supabase.from('consultations').insert([{
+                     member_id: member.id,
+                     clinic_id: user.clinicId,
+                     consultation_date: new Date().toISOString(),
+                     consultation_type: 'walk_in',
+                     status: 'pending',
+                     is_flagged: limitReached,
+                     flagged_reason: limitReached ? 'Consultation Limit Exceeded' : null,
+                     flag_resolved: false
+                   }]);
+
+                   if (insertErr) throw insertErr;
+
+                   setSuccessMsg('Consultation registered successfully!');
+                   // Increment local counter to show instantly
+                   setMember({ ...member, consultations_this_month: member.consultations_this_month + 1 });
+                 } catch (err: any) {
+                   console.error(err);
+                   setError('Failed to register visit: ' + err.message);
+                 } finally {
+                   setIsRegistering(false);
+                 }
               }}
             >
-              Register New Visit
+              {isRegistering ? 'Registering...' : 'Register New Visit'}
             </button>
+            
+            {successMsg && (
+              <div style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-3)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--status-success)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', fontSize: 'var(--text-sm)', fontWeight: 500 }}>
+                <CheckCircle size={16} /> {successMsg}
+              </div>
+            )}
           </div>
 
         </div>
