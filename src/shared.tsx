@@ -239,67 +239,104 @@ export const ContactRow = ({ icon, label, value, link }: ContactRowProps) => (
 );
 
 // ─── DIGITAL MEMBERSHIP CARD ──────────────────────────────────────────────────
-interface MemberCardProps {
+export interface MemberCardProps {
   compact?: boolean;
+  memberNum?: string;
+  memberName?: string;
+  planName?: string;
+  status?: string;
+  tokensRemaining?: number;
+  totalTokens?: number;
 }
 
-export const MemberCard = ({ compact }: MemberCardProps) => (
-  <div style={{
-    background:`linear-gradient(135deg, ${C.navy} 0%, #0c2557 55%, ${C.navyMid} 100%)`,
-    borderRadius:16, padding:compact?20:26, color:C.white, position:"relative", overflow:"hidden",
-    boxShadow:"0 10px 30px rgba(11,27,63,0.35)", maxWidth: compact?"100%":520,
-  }}>
-    <div style={{ position:"absolute", right:-60, top:-60, width:220, height:220, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
-    <div style={{ position:"absolute", right:-20, top:-20, width:160, height:160, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", position:"relative", zIndex:1 }}>
-      <div>
-        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-          <Icon name="building" size={18} color={C.goldLt}/>
-          <span style={{ fontWeight:800, fontSize:19, letterSpacing:".3px" }}>NFS <span style={{ color:C.goldLt, fontWeight:600 }}>| INSURE</span></span>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, fontSize:11.5, color:"#9FB0CE" }}>
-          <span style={{ width:14, height:14, borderRadius:"50%", background:"#fff", display:"inline-block" }}/>
-          Braam Health Centre
-        </div>
-      </div>
-      <span style={{ ...badge("transparent","#E8B85A"), border:`1px solid ${C.goldLt}`, fontSize:10.5 }}>ACTIVE</span>
-    </div>
+export const MemberCard = ({ compact, memberNum, memberName, planName, status, tokensRemaining, totalTokens }: MemberCardProps) => {
+  const rem = tokensRemaining ?? 2;
+  const tot = totalTokens ?? 3;
+  const isUnlimited = tot === -1;
 
-    <div style={{ marginTop:22, position:"relative", zIndex:1, display:"flex", justifyContent:"space-between" }}>
-      <div>
-        <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:6 }}>Membership Number</div>
-        <div style={{ fontSize:21, fontWeight:700, letterSpacing:"2px", fontFamily:"monospace" }}>NFS8 9012 3456 7</div>
+  const tokenColor = isUnlimited || rem > 1 ? "#2DD4BF" : rem === 1 ? "#FBBF24" : "#F87171";
+  const tokenBg = isUnlimited || rem > 1 ? "rgba(19, 168, 158, 0.25)" : rem === 1 ? "rgba(201, 150, 58, 0.25)" : "rgba(209, 67, 67, 0.3)";
+  const tokenBorder = isUnlimited || rem > 1 ? "rgba(19, 168, 158, 0.5)" : rem === 1 ? "rgba(201, 150, 58, 0.5)" : "rgba(209, 67, 67, 0.6)";
+  const tokenText = isUnlimited ? "UNLIMITED" : `${rem} / ${tot} REMAINING`;
 
-        <div style={{ display:"flex", gap:40, marginTop:18 }}>
-          <div>
-            <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:4 }}>Member</div>
-            <div style={{ fontWeight:700, fontSize:14.5 }}>EZILE GCSAMBA</div>
+  return (
+    <div style={{
+      background:`linear-gradient(135deg, ${C.navy} 0%, #0c2557 55%, ${C.navyMid} 100%)`,
+      borderRadius:16, padding:compact?20:26, color:C.white, position:"relative", overflow:"hidden",
+      boxShadow:"0 10px 30px rgba(11,27,63,0.35)", maxWidth: compact?"100%":520,
+    }}>
+      <div style={{ position:"absolute", right:-60, top:-60, width:220, height:220, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
+      <div style={{ position:"absolute", right:-20, top:-20, width:160, height:160, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", position:"relative", zIndex:1 }}>
+        <div>
+          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <Icon name="building" size={18} color={C.goldLt}/>
+            <span style={{ fontWeight:800, fontSize:19, letterSpacing:".3px" }}>NFS <span style={{ color:C.goldLt, fontWeight:600 }}>| INSURE</span></span>
           </div>
-          <div>
-            <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:4 }}>Plan</div>
-            <div style={{ fontWeight:700, fontSize:14.5, color:C.goldLt }}>COUPLE</div>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, fontSize:11.5, color:"#9FB0CE" }}>
+            <span style={{ width:14, height:14, borderRadius:"50%", background:"#fff", display:"inline-block" }}/>
+            Braam Health Centre
           </div>
         </div>
+        <span style={{ ...badge("transparent","#E8B85A"), border:`1px solid ${C.goldLt}`, fontSize:10.5 }}>{status?.toUpperCase() || "ACTIVE"}</span>
       </div>
 
-      <div style={{ background:"#fff", borderRadius:10, width:84, height:84, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#fff"/>
-          {Array.from({length:64}).map((_,i)=>{
-            const x=(i%8)*8, y=Math.floor(i/8)*8;
-            return ((i*7+3)%5===0) ? <rect key={i} x={x} y={y} width="8" height="8" fill="#0B1B3F"/> : null;
-          })}
-        </svg>
+      <div style={{ marginTop:20, position:"relative", zIndex:1, display:"flex", justifyContent:"space-between" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:4 }}>Membership Number</div>
+          <div style={{ fontSize:20, fontWeight:700, letterSpacing:"1.5px", fontFamily:"monospace" }}>{memberNum || "NFS8 9012 3456 7"}</div>
+
+          <div style={{ display:"flex", gap:28, marginTop:14 }}>
+            <div>
+              <div style={{ fontSize:10, letterSpacing:"1.2px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:3 }}>Member</div>
+              <div style={{ fontWeight:700, fontSize:13.5 }}>{memberName?.toUpperCase() || "EZILE GCSAMBA"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize:10, letterSpacing:"1.2px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:3 }}>Plan</div>
+              <div style={{ fontWeight:700, fontSize:13.5, color:C.goldLt }}>{planName?.toUpperCase() || "COUPLE"}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background:"#fff", borderRadius:10, width:80, height:80, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginLeft: 12 }}>
+          <svg width="60" height="60" viewBox="0 0 64 64"><rect width="64" height="64" fill="#fff"/>
+            {Array.from({length:64}).map((_,i)=>{
+              const x=(i%8)*8, y=Math.floor(i/8)*8;
+              return ((i*7+3)%5===0) ? <rect key={i} x={x} y={y} width="8" height="8" fill="#0B1B3F"/> : null;
+            })}
+          </svg>
+        </div>
       </div>
+
+      <div style={{ marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.12)", display:"flex", justifyContent:"space-between", alignItems:"center", position:"relative", zIndex:1 }}>
+        <div>
+          <div style={{ fontSize:9.5, letterSpacing:"1.2px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:3 }}>CONSULTATION TOKENS</div>
+          <div style={{
+            display:"inline-flex", alignItems:"center", gap:6, padding:"4px 10px", borderRadius:6,
+            background: tokenBg, border:`1px solid ${tokenBorder}`, color: tokenColor,
+            fontSize:12, fontWeight:700, letterSpacing:"0.4px"
+          }}>
+            <span style={{ width:6, height:6, borderRadius:"50%", background: tokenColor, display:"inline-block" }} />
+            {tokenText}
+          </div>
+        </div>
+        {!compact && (
+          <div style={{ fontSize:11.5, color:"#9FB0CE", display:"flex", alignItems:"center", gap:4 }}>
+            <Icon name="note" size={13} color={C.goldLt}/> Digital Token Verified
+          </div>
+        )}
+      </div>
+
+      {!compact && (
+        <div style={{ marginTop:12, paddingTop:10, borderTop:"1px solid rgba(255,255,255,0.08)", display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11.5, color:"#9FB0CE" }}>
+          <span>Show QR at reception for instant verification</span>
+          <span style={{ color:C.goldLt, fontWeight:600 }}>Active Membership</span>
+        </div>
+      )}
     </div>
+  );
+};
 
-    {!compact && (
-      <div style={{ marginTop:20, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.12)", display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, color:"#9FB0CE" }}>
-        <span>Show QR at reception for instant verification</span>
-        <span style={{ display:"flex", alignItems:"center", gap:5, color:C.goldLt, fontWeight:600 }}><Icon name="note" size={13} color={C.goldLt}/>Statement</span>
-      </div>
-    )}
-  </div>
-);
 
 // ─── SHARED DATA (mock) ──────────────────────────────────────────────────────
 export interface ConsultEntry {

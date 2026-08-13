@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getMemberDetails, type Member } from "../../lib/api/member";
+import { getMemberDetails, getTokenBalance, type Member, type TokenBalance } from "../../lib/api/member";
 import { C, S, Icon, Btn, MemberCard } from "../../components/shared";
 
 export default function MyCard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [member, setMember] = useState<Member | null>(null);
+  const [tokenBalance, setTokenBalance] = useState<TokenBalance | null>(null);
 
   useEffect(() => {
     async function load() {
       if (user) {
         const mem = await getMemberDetails(user.id);
-        if (mem) setMember(mem);
+        if (mem) {
+          setMember(mem);
+          const bal = await getTokenBalance(mem.id);
+          if (bal) setTokenBalance(bal);
+        }
       }
     }
     load();
@@ -31,8 +36,10 @@ export default function MyCard() {
       <MemberCard 
         memberNum={member?.card_number}
         memberName={user?.name || ""}
-        planName={member?.plan?.name}
+        planName={member?.plan?.name || tokenBalance?.plan_name}
         status={member?.status}
+        tokensRemaining={tokenBalance?.tokens_remaining}
+        totalTokens={tokenBalance?.monthly_tokens}
       />
       <div style={{ fontSize:13, color:C.grey500, marginTop:16, marginBottom:18 }}>
         Scan the QR code at reception for instant verification — no internet required.
