@@ -133,12 +133,20 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <span style={S.label}>MY CONSULTATIONS</span>
-          <div style={{ fontSize:42, fontWeight:800, color:C.navy, margin:"8px 0 10px" }}>{consultations.length}</div>
-          <div style={{ background:C.grey100, borderRadius:99, height:6, marginBottom:8 }}>
-            <div style={{ width: `${Math.min(100, (consultations.length / 6) * 100)}%`, background:C.teal, height:"100%", borderRadius:99 }}/>
+          <span style={S.label}>MONTHLY BENEFIT USAGE</span>
+          <div style={{ fontSize:36, fontWeight:800, color:C.navy, margin:"8px 0 10px" }}>
+            {member?.consultations_used_this_month || 0} <span style={{ fontSize:16, color:C.grey500, fontWeight:500 }}>/ {member?.plan?.consultations_pm || 3} Consultations</span>
           </div>
-          <div style={{ fontSize:12, color:C.grey500 }}>of 6 · {Math.max(0, 6 - consultations.length)} visits remaining</div>
+          <div style={{ background:C.grey100, borderRadius:99, height:8, marginBottom:10, overflow:'hidden' }}>
+            <div style={{ 
+              width: `${Math.min(100, (((member?.consultations_used_this_month || 0) / (member?.plan?.consultations_pm || 3)) * 100))}%`, 
+              background: 'linear-gradient(90deg, #c9a033 0%, #1c2340 100%)', 
+              height:"100%", borderRadius:99 
+            }}/>
+          </div>
+          <div style={{ fontSize:12, color:C.grey700, fontWeight:600 }}>
+            {Math.max(0, (member?.plan?.consultations_pm || 3) - (member?.consultations_used_this_month || 0))} visits remaining this month at <strong>{member?.clinic?.name || 'Assigned Clinic'}</strong>
+          </div>
         </Card>
       </div>
 
@@ -178,15 +186,18 @@ export default function Dashboard() {
         {consultations.length === 0 ? (
           <div style={{ textAlign:"center", padding:"22px 0", color:C.grey500, fontSize:13.5 }}>No consultations on record yet.</div>
         ) : (
-          consultations.slice(0,3).map((c,i)=>(
-            <ConsultRow 
-              key={c.id} 
-              date={new Date(c.consultation_date).toDateString()} 
-              time={new Date(c.consultation_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
-              text={c.clinical_notes || c.consultation_type} 
-              last={i===Math.min(consultations.length - 1, 2)}
-            />
-          ))
+          consultations.slice(0,3).map((c,i)=>{
+            const d = new Date(c.visited_at || c.consultation_date || Date.now());
+            return (
+              <ConsultRow 
+                key={c.id} 
+                date={d.toDateString()} 
+                time={d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+                text={c.clinical_notes || c.consultation_type} 
+                last={i===Math.min(consultations.length - 1, 2)}
+              />
+            );
+          })
         )}
       </Card>
 
@@ -195,15 +206,18 @@ export default function Dashboard() {
         {payments.length === 0 ? (
           <div style={{ textAlign:"center", padding:"22px 0", color:C.grey500, fontSize:13.5 }}>No payments on record yet.</div>
         ) : (
-          payments.slice(0,3).map((p,i)=>(
-             <div key={p.id} style={{ display:"flex", justifyContent:"space-between", padding:"14px 0", borderBottom: i===Math.min(payments.length - 1, 2)? "none" : `1px solid ${C.grey100}` }}>
-                <div>
-                  <div style={{ fontWeight:700, color:C.navy, fontSize:14 }}>{new Date(p.date).toDateString()}</div>
-                  <div style={{ fontSize:13, color:C.grey700, marginTop:2 }}>{p.method}</div>
-                </div>
-                <div style={{ fontWeight:700, color:C.navy }}>R{(p.amount_cents / 100).toFixed(2)}</div>
-             </div>
-          ))
+          payments.slice(0,3).map((p,i)=>{
+            const pd = new Date(p.created_at || p.date || Date.now());
+            return (
+              <div key={p.id} style={{ display:"flex", justifyContent:"space-between", padding:"14px 0", borderBottom: i===Math.min(payments.length - 1, 2)? "none" : `1px solid ${C.grey100}` }}>
+                 <div>
+                   <div style={{ fontWeight:700, color:C.navy, fontSize:14 }}>{pd.toDateString()}</div>
+                   <div style={{ fontSize:13, color:C.grey700, marginTop:2 }}>{p.method}</div>
+                 </div>
+                 <div style={{ fontWeight:700, color:C.navy }}>R{(p.amount_cents / 100).toFixed(2)}</div>
+              </div>
+            );
+          })
         )}
       </Card>
 

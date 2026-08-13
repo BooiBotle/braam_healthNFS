@@ -113,9 +113,9 @@ export default function Statement() {
           <div style={{ textAlign:"center", padding:"20px 0", color:C.grey500, fontSize:13.5, border:`1px solid ${C.grey100}` }}>No payments on record.</div>
         ) : payments.map(p => (
            <div key={p.id} style={{ display:"flex", padding:"12px 16px", borderBottom:`1px solid ${C.grey100}`, fontSize:13 }}>
-              <span style={{ flex:1 }}>{new Date(p.date).toLocaleDateString()}</span>
+              <span style={{ flex:1 }}>{new Date(p.created_at || p.date || Date.now()).toLocaleDateString()}</span>
               <span style={{ flex:1 }}>R{(p.amount_cents / 100).toFixed(2)}</span>
-              <span style={{ flex:1, color: p.status === 'failed' ? C.red : C.green }}>{p.status.toUpperCase()}</span>
+              <span style={{ flex:1, color: p.status === 'failed' ? C.red : C.green }}>{(p.status || 'completed').toUpperCase()}</span>
            </div>
         ))}
       </div>
@@ -129,7 +129,7 @@ export default function Statement() {
            <div style={{ textAlign:"center", padding:"20px 0", color:C.grey500, fontSize:13.5, border:`1px solid ${C.grey100}` }}>No consultations on record.</div>
         ) : consultations.slice(0,5).map(c=>(
           <div key={c.id} style={{ display:"flex", padding:"12px 16px", borderBottom:`1px solid ${C.grey100}`, fontSize:13 }}>
-            <span style={{ width:180, color:C.navy, flexShrink:0 }}>{new Date(c.consultation_date).toLocaleDateString()}</span>
+            <span style={{ width:180, color:C.navy, flexShrink:0 }}>{new Date(c.visited_at || c.consultation_date || Date.now()).toLocaleDateString()}</span>
             <span style={{ color:C.grey700 }}>{c.clinical_notes || c.consultation_type}</span>
           </div>
         ))}

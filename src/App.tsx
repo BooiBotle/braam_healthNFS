@@ -21,7 +21,7 @@ import UpdatePasswordPage from './pages/auth/UpdatePasswordPage';
 import PortalLayout from './layouts/PortalLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Dashboards
+// Member Portal Pages
 import MemberDashboard from './pages/member/MemberDashboard';
 import Appointments from './pages/member/Appointments';
 import ClinicInfo from './pages/member/ClinicInfo';
@@ -34,6 +34,8 @@ import Payments from './pages/member/Payments';
 import Profile from './pages/member/Profile';
 import Statement from './pages/member/Statement';
 import UpgradePlan from './pages/member/UpgradePlan';
+
+// Staff Portal Pages
 import StaffDashboard from './pages/staff/StaffDashboard';
 import VerifyMember from './pages/staff/VerifyMember';
 import ApplicationsList from './pages/staff/ApplicationsList';
@@ -42,6 +44,8 @@ import ConsultationsList from './pages/staff/ConsultationsList';
 import MedicationRegister from './pages/staff/MedicationRegister';
 import PeakHours from './pages/staff/PeakHours';
 import StaffProfile from './pages/staff/StaffProfile';
+
+// Clinic Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminMembers from './pages/admin/AdminMembers';
 import AdminApplications from './pages/admin/AdminApplications';
@@ -63,6 +67,22 @@ import AdminRetention from './pages/admin/AdminRetention';
 import AdminReports from './pages/admin/AdminReports';
 import AdminIntegrations from './pages/admin/AdminIntegrations';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminPlans from './pages/admin/AdminPlans';
+import AdminPlanForm from './pages/admin/AdminPlanForm';
+import AdminProfile from './pages/admin/AdminProfile';
+import AdminSupport from './pages/admin/AdminSupport';
+
+// Super Admin Pages
+import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+import SuperAdminClinics from './pages/superadmin/SuperAdminClinics';
+import SuperAdminClinicForm from './pages/superadmin/SuperAdminClinicForm';
+import SuperAdminUsers from './pages/superadmin/SuperAdminUsers';
+import SuperAdminClinicalRisk from './pages/superadmin/SuperAdminClinicalRisk';
+import SuperAdminCommunications from './pages/superadmin/SuperAdminCommunications';
+import SuperAdminFinancials from './pages/superadmin/SuperAdminFinancials';
+import SuperAdminProfile from './pages/superadmin/SuperAdminProfile';
+import SuperAdminSupport from './pages/superadmin/SuperAdminSupport';
+import SuperAdminAnalytics from './pages/superadmin/SuperAdminAnalytics';
 
 function App() {
   return (
@@ -119,10 +139,13 @@ function App() {
               </Route>
             </Route>
 
-            {/* Admin Portal */}
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']} />}>
+            {/* Clinic Admin Portal */}
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']} />}>
               <Route element={<PortalLayout />}>
                 <Route index element={<AdminDashboard />} />
+                <Route path="plans" element={<AdminPlans />} />
+                <Route path="plans/new" element={<AdminPlanForm />} />
+                <Route path="plans/edit/:id" element={<AdminPlanForm />} />
                 <Route path="members" element={<AdminMembers />} />
                 <Route path="applications" element={<AdminApplications />} />
                 <Route path="onboarding" element={<AdminOnboarding />} />
@@ -143,7 +166,27 @@ function App() {
                 <Route path="reports" element={<AdminReports />} />
                 <Route path="integrations" element={<AdminIntegrations />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="profile" element={<AdminProfile />} />
+                <Route path="support" element={<AdminSupport />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
+              </Route>
+            </Route>
+
+            {/* Super Admin Portal */}
+            <Route path="/super-admin" element={<ProtectedRoute allowedRoles={['super_admin']} />}>
+              <Route element={<PortalLayout />}>
+                <Route index element={<SuperAdminDashboard />} />
+                <Route path="analytics" element={<SuperAdminAnalytics />} />
+                <Route path="clinics" element={<SuperAdminClinics />} />
+                <Route path="clinics/new" element={<SuperAdminClinicForm />} />
+                <Route path="clinics/edit/:id" element={<SuperAdminClinicForm />} />
+                <Route path="users" element={<SuperAdminUsers />} />
+                <Route path="clinical-risk" element={<SuperAdminClinicalRisk />} />
+                <Route path="communications" element={<SuperAdminCommunications />} />
+                <Route path="financials" element={<SuperAdminFinancials />} />
+                <Route path="support" element={<SuperAdminSupport />} />
+                <Route path="profile" element={<SuperAdminProfile />} />
+                <Route path="*" element={<Navigate to="/super-admin" replace />} />
               </Route>
             </Route>
 
@@ -158,4 +201,3 @@ function App() {
 }
 
 export default App;
-

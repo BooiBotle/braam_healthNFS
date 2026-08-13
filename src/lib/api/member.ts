@@ -8,6 +8,25 @@ export interface Profile {
   email: string;
   phone: string;
   sa_id_number?: string;
+  clinic_id?: string;
+  portal_role?: string;
+}
+
+export interface ClinicDetails {
+  id: string;
+  name: string;
+  slug: string;
+  address_line1?: string;
+  address_line2?: string;
+  suburb?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  whatsapp?: string;
+  doctor_name?: string;
+  specialty?: string;
+  open_24h: boolean;
+  logo_url?: string;
 }
 
 export interface Member {
@@ -19,13 +38,20 @@ export interface Member {
   status: string;
   created_at: string;
   plan?: Plan;
+  clinic?: ClinicDetails;
+  consultations_used_this_month?: number;
 }
 
 export interface Plan {
   id: string;
   name: string;
   description: string;
-  monthly_fee: number;
+  monthly_fee_cents?: number;
+  monthly_fee?: number;
+  consultations_pm: number;
+  includes_medication: boolean;
+  includes_24h_access: boolean;
+  includes_chronic: boolean;
 }
 
 export interface Appointment {
@@ -40,10 +66,12 @@ export interface Appointment {
 
 export interface Consultation {
   id: string;
-  consultation_date: string;
+  visited_at?: string;
+  consultation_date?: string;
   consultation_type: string;
-  status: string;
+  status?: string;
   clinical_notes?: string;
+  doctor_name?: string;
 }
 
 export interface DebitOrder {
@@ -55,10 +83,13 @@ export interface DebitOrder {
 
 export interface Payment {
   id: string;
-  date: string;
+  date?: string;
+  created_at?: string;
   amount_cents: number;
   status: string;
   method: string;
+  reference?: string;
+  description?: string;
 }
 
 export interface Dependant {
@@ -71,24 +102,39 @@ export interface Dependant {
 
 // API Functions
 
-export async function getMemberDetails(userId: string) {
-  // First get profile, then member
+export async function getMemberDetails(userId: string): Promise<Member | null> {
   const { data: member, error } = await supabase
     .from('members')
-    .select(`*, plan:plans(*)`)
+    .select(`*, plan:plans(*), clinic:clinics(*)`)
     .eq('profile_id', userId)
     .single();
     
   if (error && error.code !== 'PGRST116') {
     console.error("Error fetching member:", error);
   }
+
+  if (member) {
+    // Calculate consultations used in the current month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { data: consultations } = await supabase
+      .from('consultations')
+      .select('id')
+      .eq('member_id', member.id)
+      .gte('visited_at', startOfMonth.toISOString());
+
+    member.consultations_used_this_month = consultations?.length || 0;
+  }
+
   return member;
 }
 
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*, clinic:clinics(*)')
     .eq('id', userId)
     .single();
   if (error) console.error("Error fetching profile:", error);
@@ -110,7 +156,7 @@ export async function getConsultations(memberId: string) {
     .from('consultations')
     .select('*')
     .eq('member_id', memberId)
-    .order('consultation_date', { ascending: false });
+    .order('visited_at', { ascending: false });
   if (error) console.error("Error fetching consultations:", error);
   return data || [];
 }
@@ -130,7 +176,7 @@ export async function getPayments(memberId: string) {
     .from('payments')
     .select('*')
     .eq('member_id', memberId)
-    .order('date', { ascending: false });
+    .order('created_at', { ascending: false });
   if (error) console.error("Error fetching payments:", error);
   return data || [];
 }
@@ -148,7 +194,7 @@ export async function getPlans() {
   const { data, error } = await supabase
     .from('plans')
     .select('*')
-    .order('monthly_fee', { ascending: true });
+    .order('monthly_fee_cents', { ascending: true });
   if (error) console.error("Error fetching plans:", error);
   return data || [];
 }

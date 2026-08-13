@@ -38,7 +38,8 @@ export default function Consultations() {
             <div style={{ textAlign: "center", padding: 20, color: C.grey500 }}>No consultations found.</div>
           </Card>
         ) : consultations.map((c) => {
-          const date = new Date(c.consultation_date);
+          const dateStr = c.visited_at || c.consultation_date || new Date().toISOString();
+          const date = new Date(dateStr);
           const mon = date.toLocaleString('default', { month: 'short' });
           const day = date.getDate();
           const year = date.getFullYear();
