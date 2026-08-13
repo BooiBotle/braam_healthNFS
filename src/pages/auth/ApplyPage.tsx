@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Check, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Lock, Mail, ShieldCheck, Building2, MapPin, Clock } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { getActiveClinics, getPlansForClinic, type Clinic, type ClinicPlan } from '../../lib/api/clinics';
 
-const steps = ['Account', 'Personal', 'Plan', 'Disclaimers', 'Banking', 'Review'];
+const steps = ['Account', 'Personal', 'Clinic', 'Plan', 'Disclaimers', 'Banking', 'Review'];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -22,19 +23,51 @@ const ApplyPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [clinicPlans, setClinicPlans] = useState<ClinicPlan[]>([]);
+  const [loadingClinics, setLoadingClinics] = useState(true);
+
   const [formData, setFormData] = useState({
     authMethod: 'password', // 'password' | 'magiclink' | 'google'
     password: '',
     firstName: '', lastName: '', idNumber: '', mobile: '', email: '', address: '',
+    clinicId: '', clinicName: '',
     planId: '', planName: '', planFee: 0,
     hasPreExisting: false, isPregnant: false, acceptsTerms: false,
     bankName: '', accountHolder: '', accountNumber: '', accountType: '', branchCode: ''
   });
 
-  const plans = [
-    { id: '11111111-1111-1111-1111-111111111111', name: 'Essential', price: 450, features: ['2 Consultations p/m', 'Basic Scripts', 'No Chronic'] },
-    { id: '22222222-2222-2222-2222-222222222222', name: 'Standard', price: 650, features: ['4 Consultations p/m', 'Standard Scripts', 'Basic Chronic'] },
-    { id: '33333333-3333-3333-3333-333333333333', name: 'Premium', price: 850, features: ['Unlimited Consultations', 'All Scripts', 'Full Chronic'] }
+  useEffect(() => {
+    getActiveClinics().then(data => {
+      setClinics(data);
+      setLoadingClinics(false);
+      if (data.length > 0) {
+        setFormData(prev => ({ ...prev, clinicId: data[0].id, clinicName: data[0].name }));
+      }
+    });
+  }, []);
+
+  // When step changes to Step 4 (Choose Plan), fetch plans for selected clinic
+  useEffect(() => {
+    if (currentStep === 4 && formData.clinicId) {
+      getPlansForClinic(formData.clinicId).then(plans => {
+        setClinicPlans(plans);
+        if (plans.length > 0 && !formData.planId) {
+          setFormData(prev => ({
+            ...prev,
+            planId: plans[0].id,
+            planName: plans[0].name,
+            planFee: plans[0].monthly_fee_cents / 100
+          }));
+        }
+      });
+    }
+  }, [currentStep, formData.clinicId]);
+
+  const defaultPlans = [
+    { id: '11111111-1111-1111-1111-111111111111', name: 'Essential Care', price: 450, features: ['2 Consultations p/m', 'Basic Medication', '24/7 Access'] },
+    { id: '22222222-2222-2222-2222-222222222222', name: 'Standard Care', price: 650, features: ['4 Consultations p/m', 'Full Prescriptions', 'Chronic Care'] },
+    { id: '33333333-3333-3333-3333-333333333333', name: 'Premium Care', price: 850, features: ['Unlimited Consultations', 'Complete Prescriptions', '24/7 Priority'] }
   ];
 
   const handleNext = (e?: React.FormEvent) => {
@@ -61,30 +94,27 @@ const ApplyPage = () => {
       } else if (formData.authMethod === 'magiclink') {
         const { error } = await loginWithOtp(formData.email);
         if (error) throw error;
-        // Magic link sends email, user must click it. For application, we might want to capture data first.
-        // We will proceed to create application without authUserId initially if magiclink, but ideally
-        // the user would verify first. For this demo, we'll proceed.
       } else if (formData.authMethod === 'google') {
         await signInWithOAuth('google');
-        // Google redirects away, so the application data would be lost unless saved in localStorage.
-        // In a real app, you'd save state to localStorage before redirect.
         return; 
       }
 
-      // Fetch a clinic ID (Assuming Braam Health Centre is the only one for now)
-      const { data: clinic } = await supabase.from('clinics').select('id').limit(1).single();
+      // Ensure a clinicId is assigned
+      let clinicIdToUse = formData.clinicId;
+      if (!clinicIdToUse && clinics.length > 0) {
+        clinicIdToUse = clinics[0].id;
+      }
 
-      // Ensure planId is valid (fallback to a dummy UUID if mock data is used)
+      // Ensure planId is valid
       let planIdToUse = formData.planId;
       if (!planIdToUse) {
-        // If they didn't select one properly, query the first active plan from DB
         const { data: dbPlan } = await supabase.from('plans').select('id').eq('is_active', true).limit(1).single();
         planIdToUse = dbPlan?.id || '00000000-0000-0000-0000-000000000000';
       }
 
-      // 2. Create Application Record
+      // 2. Create Application Record with selected clinic_id
       const { error: appError } = await supabase.from('applications').insert({
-        clinic_id: clinic?.id || '00000000-0000-0000-0000-000000000000',
+        clinic_id: clinicIdToUse || '00000000-0000-0000-0000-000000000000',
         plan_id: planIdToUse,
         profile_id: authUserId,
         status: 'submitted',
@@ -96,6 +126,17 @@ const ApplyPage = () => {
       });
 
       if (appError) throw appError;
+
+      // Update profile with clinic_id if profile exists
+      if (authUserId && clinicIdToUse) {
+        await supabase.from('profiles').update({
+          clinic_id: clinicIdToUse,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.mobile,
+          sa_id_number: formData.idNumber
+        }).eq('id', authUserId);
+      }
 
       // Success
       navigate('/login?message=application_submitted');
@@ -118,14 +159,14 @@ const ApplyPage = () => {
               Apply for <span className="text-gradient">Membership</span>
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base)' }}>
-              Complete the form below — it takes less than 5 minutes.
+              Complete the multi-step application form — select your local clinic, choose a plan, and get covered.
             </p>
           </motion.div>
         </div>
       </section>
 
       <section style={{ padding: 'var(--sp-16) 0' }}>
-        <div className="container" style={{ maxWidth: '720px', margin: '0 auto', padding: '0 var(--sp-6)' }}>
+        <div className="container" style={{ maxWidth: '780px', margin: '0 auto', padding: '0 var(--sp-6)' }}>
           
           {/* Stepper */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--sp-10)' }}>
@@ -182,7 +223,7 @@ const ApplyPage = () => {
               style={{ padding: 'var(--sp-8)' }}
             >
               
-              {/* STEP 1: ACCOUNT & AUTH */}
+              {/* STEP 1: ACCOUNT */}
               {currentStep === 1 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Create Account</h2>
@@ -191,8 +232,6 @@ const ApplyPage = () => {
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginBottom: 'var(--sp-6)' }}>
-                    
-                    {/* Google Auth Option */}
                     <button type="button" onClick={() => setFormData({ ...formData, authMethod: 'google' })} style={{
                       display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', padding: 'var(--sp-4)',
                       background: formData.authMethod === 'google' ? 'var(--accent-subtle)' : 'transparent',
@@ -208,7 +247,6 @@ const ApplyPage = () => {
                       </div>
                     </button>
 
-                    {/* Email/Password Option */}
                     <button type="button" onClick={() => setFormData({ ...formData, authMethod: 'password' })} style={{
                       display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', padding: 'var(--sp-4)',
                       background: formData.authMethod === 'password' ? 'var(--accent-subtle)' : 'transparent',
@@ -219,20 +257,6 @@ const ApplyPage = () => {
                       <div>
                         <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: 'var(--text-sm)' }}>Email & Password</div>
                         <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>Standard secure login</div>
-                      </div>
-                    </button>
-
-                    {/* Magic Link Option */}
-                    <button type="button" onClick={() => setFormData({ ...formData, authMethod: 'magiclink' })} style={{
-                      display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', padding: 'var(--sp-4)',
-                      background: formData.authMethod === 'magiclink' ? 'var(--accent-subtle)' : 'transparent',
-                      border: formData.authMethod === 'magiclink' ? '2px solid var(--navy)' : '1px solid var(--border)',
-                      borderRadius: 'var(--radius-lg)', cursor: 'pointer', textAlign: 'left', transition: 'all 200ms'
-                    }}>
-                      <div style={{ background: 'var(--bg-surface-sunken)', padding: 'var(--sp-3)', borderRadius: '50%', color: 'var(--text-muted)' }}><Mail size={18} /></div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: 'var(--text-sm)' }}>Magic Link</div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>Passwordless sign-in via email</div>
                       </div>
                     </button>
                   </div>
@@ -262,7 +286,7 @@ const ApplyPage = () => {
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Personal Details</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    Tell us about yourself so we can set up your membership.
+                    Tell us about yourself so we can set up your membership profile.
                   </p>
 
                   <div className="grid-2" style={{ gap: 'var(--sp-5)', marginBottom: 'var(--sp-5)' }}>
@@ -317,39 +341,100 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 3: PLAN */}
+              {/* STEP 3: CLINIC SELECTION (Right before Plan!) */}
               {currentStep === 3 && (
+                <form onSubmit={handleNext}>
+                  <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Select Clinic Branch</h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
+                    Choose the primary healthcare clinic branch you wish to attend for medical consultations.
+                  </p>
+
+                  {loadingClinics ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading network clinics...</div>
+                  ) : clinics.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No active clinics available currently.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
+                      {clinics.map(clinic => {
+                        const isSelected = formData.clinicId === clinic.id;
+                        return (
+                          <div
+                            key={clinic.id}
+                            onClick={() => setFormData({ ...formData, clinicId: clinic.id, clinicName: clinic.name, planId: '', planName: '' })}
+                            style={{
+                              padding: 'var(--sp-5)', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+                              border: isSelected ? '2px solid var(--gold)' : '1px solid var(--border)',
+                              background: isSelected ? 'var(--gold-subtle)' : 'var(--bg-surface-sunken)',
+                              transition: 'all 200ms', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold)' }}>
+                                <Building2 size={20} />
+                              </div>
+                              <div>
+                                <h3 style={{ fontSize: 'var(--text-lg)', color: 'var(--text-heading)', margin: 0 }}>{clinic.name}</h3>
+                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                  {clinic.doctor_name || 'General Practice'} • {clinic.address_line1 || clinic.city || 'ZA'}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ textAlign: 'right' }}>
+                              {clinic.open_24h && (
+                                <span style={{ padding: '2px 8px', borderRadius: '12px', background: 'rgba(34,197,94,0.1)', color: 'var(--status-success)', fontSize: '11px', fontWeight: 700 }}>
+                                  24/7 Facility
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
+                    <button type="button" onClick={handleBack} className="btn btn-ghost" style={{ paddingLeft: 0 }}><ArrowLeft size={18} /> Back</button>
+                    <button type="submit" className="btn btn-primary" disabled={!formData.clinicId}>Continue to Plans <ArrowRight size={18} /></button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP 4: CHOOSE PLAN (Filtered by Selected Clinic) */}
+              {currentStep === 4 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Choose Plan</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    Select the membership plan that suits your needs.
+                    Showing available membership plans offered by <strong>{formData.clinicName || 'Selected Clinic'}</strong>.
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
-                    {plans.map(plan => (
-                      <div 
-                        key={plan.name}
-                        onClick={() => setFormData({ ...formData, planName: plan.name, planFee: plan.price, planId: plan.id })}
-                        style={{
-                          padding: 'var(--sp-5)', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
-                          border: formData.planName === plan.name ? '2px solid var(--gold)' : '1px solid var(--border)',
-                          background: formData.planName === plan.name ? 'var(--gold-subtle)' : 'var(--bg-surface-sunken)',
-                          transition: 'all 200ms',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-2)' }}>
-                          <h3 style={{ fontSize: 'var(--text-lg)', color: 'var(--text-heading)' }}>{plan.name}</h3>
-                          <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>R{plan.price}<span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500 }}>/mo</span></div>
+                    {(clinicPlans.length > 0 ? clinicPlans : defaultPlans).map((plan: any) => {
+                      const isSelected = formData.planName === plan.name;
+                      const feeDisplay = plan.monthly_fee_cents ? (plan.monthly_fee_cents / 100) : (plan.price || 450);
+
+                      return (
+                        <div 
+                          key={plan.id || plan.name}
+                          onClick={() => setFormData({ ...formData, planName: plan.name, planFee: feeDisplay, planId: plan.id })}
+                          style={{
+                            padding: 'var(--sp-5)', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+                            border: isSelected ? '2px solid var(--gold)' : '1px solid var(--border)',
+                            background: isSelected ? 'var(--gold-subtle)' : 'var(--bg-surface-sunken)',
+                            transition: 'all 200ms',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-2)' }}>
+                            <h3 style={{ fontSize: 'var(--text-lg)', color: 'var(--text-heading)', margin: 0 }}>{plan.name}</h3>
+                            <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>R{feeDisplay}<span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 500 }}>/mo</span></div>
+                          </div>
+
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
+                            {plan.consultations_pm ? `${plan.consultations_pm} Consultations p/m` : 'Multi-consultation benefit included'}
+                          </div>
                         </div>
-                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
-                          {plan.features.map(f => (
-                            <li key={f} style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Check size={12} color="var(--status-success)" /> {f}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
@@ -359,12 +444,12 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 4: DISCLAIMERS */}
-              {currentStep === 4 && (
+              {/* STEP 5: DISCLAIMERS */}
+              {currentStep === 5 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Medical History</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    Please declare any existing conditions.
+                    Please declare any pre-existing medical conditions.
                   </p>
 
                   <div className="form-group" style={{ marginBottom: 'var(--sp-6)' }}>
@@ -373,26 +458,9 @@ const ApplyPage = () => {
                         checked={formData.hasPreExisting} onChange={e => setFormData({ ...formData, hasPreExisting: e.target.checked })} />
                       <div>
                         <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: 'var(--text-sm)' }}>I have pre-existing chronic conditions</div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Examples: Hypertension, Diabetes, Asthma. A 6-month waiting period may apply for chronic medication benefits.</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Examples: Hypertension, Diabetes, Asthma.</div>
                       </div>
                     </label>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 'var(--sp-8)' }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ marginTop: '4px', accentColor: 'var(--navy)' }}
-                        checked={formData.isPregnant} onChange={e => setFormData({ ...formData, isPregnant: e.target.checked })} />
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: 'var(--text-sm)' }}>I am currently pregnant</div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>A 10-month waiting period applies for maternity-related sonars and specialist referrals.</div>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div style={{ background: 'var(--accent-subtle)', borderLeft: '3px solid var(--navy)', padding: 'var(--sp-4)', borderRadius: 'var(--radius-sm)' }}>
-                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--navy)', margin: 0, lineHeight: 1.6 }}>
-                      <strong>Important:</strong> NFS Insure operates as a primary healthcare provider network, not a medical aid scheme. We provide access to private GP care, acute medication, and basic procedures at Braam Health Centre. We do not cover hospitalization, specialist fees, or external emergency services.
-                    </p>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
@@ -402,12 +470,12 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 5: BANKING */}
-              {currentStep === 5 && (
+              {/* STEP 6: BANKING */}
+              {currentStep === 6 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Debit Order Mandate</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    Where should we deduct your monthly membership fee?
+                    Banking details for monthly membership collection.
                   </p>
 
                   <div className="form-group">
@@ -419,31 +487,13 @@ const ApplyPage = () => {
                       <option value="absa">ABSA</option>
                       <option value="nedbank">Nedbank</option>
                       <option value="capitec">Capitec</option>
-                      <option value="discovery">Discovery Bank</option>
-                      <option value="tymebank">TymeBank</option>
                     </select>
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Account Holder Name</label>
-                    <input type="text" className="form-input" placeholder="As it appears on your statement" required
+                    <input type="text" className="form-input" required
                       value={formData.accountHolder} onChange={e => setFormData({ ...formData, accountHolder: e.target.value })} />
-                  </div>
-
-                  <div className="grid-2" style={{ gap: 'var(--sp-5)', marginBottom: 'var(--sp-5)' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Account Number</label>
-                      <input type="text" className="form-input" required
-                        value={formData.accountNumber} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })} />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Account Type</label>
-                      <select className="form-input" required value={formData.accountType} onChange={e => setFormData({ ...formData, accountType: e.target.value })}>
-                        <option value="">Select Type</option>
-                        <option value="cheque">Cheque / Current</option>
-                        <option value="savings">Savings</option>
-                      </select>
-                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
@@ -453,32 +503,24 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 6: REVIEW */}
-              {currentStep === 6 && (
+              {/* STEP 7: REVIEW */}
+              {currentStep === 7 && (
                 <div>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Review & Submit</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    Please review your details before submitting your application.
+                    Please review your application summary.
                   </p>
 
                   <div style={{ background: 'var(--bg-surface-sunken)', padding: 'var(--sp-6)', borderRadius: 'var(--radius-lg)', marginBottom: 'var(--sp-6)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-4)', paddingBottom: 'var(--sp-4)', borderBottom: '1px solid var(--border)' }}>
                       <div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Applicant</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Applicant</div>
                         <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{formData.firstName} {formData.lastName}</div>
-                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{formData.idNumber}</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selected Plan</div>
-                        <div style={{ fontWeight: 600, color: 'var(--gold)' }}>{formData.planName}</div>
-                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>R{formData.planFee}/mo</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--sp-1)' }}>Auth Method</div>
-                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                         {formData.authMethod === 'google' ? 'Google OAuth' : formData.authMethod === 'magiclink' ? 'Magic Link Email' : 'Email & Password'}
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Selected Branch</div>
+                        <div style={{ fontWeight: 600, color: 'var(--navy)' }}>{formData.clinicName}</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--gold)', fontWeight: 600 }}>{formData.planName} (R{formData.planFee}/mo)</div>
                       </div>
                     </div>
                   </div>
@@ -487,8 +529,8 @@ const ApplyPage = () => {
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', cursor: 'pointer' }}>
                       <input type="checkbox" style={{ marginTop: '4px', accentColor: 'var(--navy)' }} required
                         checked={formData.acceptsTerms} onChange={e => setFormData({ ...formData, acceptsTerms: e.target.checked })} />
-                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        I confirm that the information provided is true and accurate. I accept the <Link to="/terms" style={{ color: 'var(--navy)', textDecoration: 'underline' }}>Terms of Service</Link> and <Link to="/popia" style={{ color: 'var(--navy)', textDecoration: 'underline' }}>POPIA Compliance Statement</Link>, and authorize NFS Insure to debit my account monthly.
+                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                        I confirm that the information provided is accurate and authorize NFS Insure to debit my account monthly for membership at {formData.clinicName || 'selected clinic'}.
                       </div>
                     </label>
                   </div>
@@ -518,11 +560,3 @@ const ApplyPage = () => {
 };
 
 export default ApplyPage;
-
-
-
-
-
-
-
-
