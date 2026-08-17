@@ -370,8 +370,4 @@ const AppointmentsList = () => {
   );
 };
 
-
-
-
-
-
+export default AppointmentsList;

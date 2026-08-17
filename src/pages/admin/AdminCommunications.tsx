@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Upload, FileText, Search, User, ShieldCheck, CreditCard, ChevronDown } from 'lucide-react';
+import { Send, Upload, FileText, Search, User, ShieldCheck, CreditCard, ChevronDown, CheckCircle } from 'lucide-react';
 import Modal from '../../components/Modal';
 
 const AdminCommunications = () => {

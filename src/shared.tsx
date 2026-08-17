@@ -138,10 +138,11 @@ interface BtnProps {
   onClick?: () => void;
   sx?: CSSProperties;
   type?: "button" | "submit" | "reset";
+  disabled?: boolean;
 }
 
-export const Btn = ({ children, variant = "primary", size = "md", onClick, sx, type }: BtnProps) => (
-  <button type={type || "button"} style={{ ...btn(variant,size), ...sx }} onClick={onClick}>{children}</button>
+export const Btn = ({ children, variant = "primary", size = "md", onClick, sx, type, disabled }: BtnProps) => (
+  <button type={type || "button"} disabled={disabled} style={{ ...btn(variant,size), ...sx, opacity: disabled ? 0.6 : 1, cursor: disabled ? "not-allowed" : "pointer" }} onClick={onClick}>{children}</button>
 );
 
 interface CardProps {

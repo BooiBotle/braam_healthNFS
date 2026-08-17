@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext";
 import { getMemberDetails, getAppointments, getConsultations, getPayments, type Member, type Appointment, type Consultation, type Payment } from "../../lib/api/member";
 import {
@@ -187,7 +188,7 @@ export default function Dashboard() {
               display: "flex", gap: 16, alignItems: "flex-start", boxShadow: "0 4px 12px rgba(217, 119, 6, 0.05)"
             }}>
               <div style={{ background: "#fef3c7", color: "#d97706", width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Icon name="bell" size={20} />
+                <Icon name="mail" size={20} />
               </div>
               <div style={{ flex: 1 }}>
                 <h4 style={{ margin: "0 0 4px 0", color: "#92400e", fontSize: 16 }}>{comm.title}</h4>

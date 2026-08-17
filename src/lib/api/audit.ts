@@ -10,6 +10,7 @@ export interface AuditLogEntry {
   old_data?: any;
   new_data?: any;
   metadata?: any;
+  details?: string;
 }
 
 export const logAudit = async (entry: AuditLogEntry) => {
