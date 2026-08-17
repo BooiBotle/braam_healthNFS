@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { logAudit } from '../../lib/api/audit';
 import { Check, X, Search, Filter, Eye, FileText, User, Calendar, Activity } from 'lucide-react';
 import Modal from '../../components/Modal';
 
@@ -28,9 +29,23 @@ const ApplicationsList = () => {
     fetchApps();
   }, [user, filter]);
 
-  const handleUpdateStatus = async (id: string, status: string) => {
-    await supabase.from('applications').update({ status, reviewed_by: user?.id, reviewed_at: new Date().toISOString() }).eq('id', id);
-    fetchApps();
+  const handleUpdateStatus = async (id: string, status: string, applicantName?: string) => {
+    try {
+      await supabase.from('applications').update({ status, reviewed_by: user?.id, reviewed_at: new Date().toISOString() }).eq('id', id);
+      
+      await logAudit({
+        performed_by: user?.id || 'system',
+        performer_name: user?.name || 'Staff Member',
+        action: `application_${status}`,
+        entity_type: 'application',
+        entity_id: id,
+        details: `Application for ${applicantName || 'Applicant'} was ${status} by ${user?.name || 'Staff'}`,
+      });
+
+      fetchApps();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -98,8 +113,8 @@ const ApplicationsList = () => {
                         </button>
                         {app.status === 'submitted' && (
                           <>
-                             <button className="btn btn-ghost" onClick={() => handleUpdateStatus(app.id, 'rejected')} style={{ padding: 'var(--sp-2)', color: 'var(--status-error)' }}><X size={16}/></button>
-                             <button className="btn btn-primary" onClick={() => handleUpdateStatus(app.id, 'approved')} style={{ padding: 'var(--sp-2)' }}><Check size={16}/></button>
+                             <button className="btn btn-ghost" onClick={() => handleUpdateStatus(app.id, 'rejected', app.applicant_name)} style={{ padding: 'var(--sp-2)', color: 'var(--status-error)' }}><X size={16}/></button>
+                             <button className="btn btn-primary" onClick={() => handleUpdateStatus(app.id, 'approved', app.applicant_name)} style={{ padding: 'var(--sp-2)' }}><Check size={16}/></button>
                           </>
                         )}
                       </div>
@@ -173,14 +188,14 @@ const ApplicationsList = () => {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                 <button 
                   className="btn btn-primary" 
-                  onClick={() => { handleUpdateStatus(selectedApp.id, 'approved'); setSelectedApp(null); }} 
+                  onClick={() => { handleUpdateStatus(selectedApp.id, 'approved', selectedApp.applicant_name); setSelectedApp(null); }} 
                   style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
                 >
                   <Check size={18} /> Approve
                 </button>
                 <button 
                   className="btn btn-ghost" 
-                  onClick={() => { handleUpdateStatus(selectedApp.id, 'rejected'); setSelectedApp(null); }} 
+                  onClick={() => { handleUpdateStatus(selectedApp.id, 'rejected', selectedApp.applicant_name); setSelectedApp(null); }} 
                   style={{ flex: 1, color: 'var(--status-error)', border: '1px solid var(--status-error)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
                 >
                   <X size={18} /> Reject

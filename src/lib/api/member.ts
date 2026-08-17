@@ -131,6 +131,57 @@ export async function getMemberDetails(userId: string): Promise<Member | null> {
   return member;
 }
 
+export async function getMemberByCardNumber(cardNumber: string): Promise<any | null> {
+  // Try multiple patterns: exact, uppercase, trimmed
+  const cleaned = cardNumber.trim().toUpperCase();
+  
+  const { data: member, error } = await supabase
+    .from('members')
+    .select(`
+      *,
+      plan:plans(*),
+      clinic:clinics(*),
+      profiles!inner(full_name, first_name, last_name, sa_id_number, phone, email, avatar_url, date_of_birth, gender)
+    `)
+    .eq('card_number', cleaned)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error("Error fetching member by card:", error);
+    return null;
+  }
+
+  if (member) {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { count: usedThisMonth } = await supabase
+      .from('consultations')
+      .select('id', { count: 'exact', head: true })
+      .eq('member_id', member.id)
+      .gte('visited_at', startOfMonth.toISOString());
+
+    const { count: totalConsultations } = await supabase
+      .from('consultations')
+      .select('id', { count: 'exact', head: true })
+      .eq('member_id', member.id);
+
+    const { data: recentConsultations } = await supabase
+      .from('consultations')
+      .select('*')
+      .eq('member_id', member.id)
+      .order('visited_at', { ascending: false })
+      .limit(5);
+
+    member.consultations_used_this_month = usedThisMonth || 0;
+    member.total_consultations = totalConsultations || 0;
+    member.recent_consultations = recentConsultations || [];
+  }
+
+  return member;
+}
+
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
@@ -149,6 +200,23 @@ export async function getAppointments(memberId: string) {
     .order('appointment_date', { ascending: false });
   if (error) console.error("Error fetching appointments:", error);
   return data || [];
+}
+
+export async function submitConsultationNote(consultId: string, note: string) {
+  return await supabase
+    .from('consultations')
+    .update({ clinical_notes: note })
+    .eq('id', consultId);
+}
+
+export async function requestStatement(memberId: string) {
+  const { error } = await supabase
+    .from('statement_requests')
+    .insert([{
+      member_id: memberId,
+      status: 'pending'
+    }]);
+  if (error) throw error;
 }
 
 export async function getConsultations(memberId: string) {
