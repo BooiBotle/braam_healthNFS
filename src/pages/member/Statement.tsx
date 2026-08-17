@@ -14,6 +14,8 @@ export default function Statement() {
   const [totalCollected, setTotalCollected] = useState(0);
   const [failedPayments, setFailedPayments] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+  const [requested, setRequested] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -42,6 +44,21 @@ export default function Statement() {
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading statement...</div>;
 
+  const handleRequestStatement = async () => {
+    if (!member) return;
+    setRequesting(true);
+    try {
+      const { requestStatement } = await import("../../lib/api/member");
+      await requestStatement(member.id);
+      setRequested(true);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to request statement. Please try again later.");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
   const summaryRows: [string, string][] = [
     ["Plan", member?.plan?.name || "None"],
     ["Monthly Fee", `R${member?.plan?.monthly_fee || 0}`],
@@ -56,7 +73,15 @@ export default function Statement() {
       <div style={{ background:C.navy, color:C.white, margin:"-30px -36px 24px", padding:"18px 36px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <span style={{ fontSize:14, fontWeight:600 }}>Your membership statement is ready</span>
         <div style={{ display:"flex", gap:10 }}>
-          <Btn variant="gold" size="sm"><Icon name="mail" size={13}/>Email me this statement</Btn>
+          <Btn 
+            variant="gold" 
+            size="sm"
+            onClick={handleRequestStatement}
+            disabled={requesting || requested}
+          >
+            <Icon name="mail" size={13}/>
+            {requesting ? "Sending..." : requested ? "Request Sent ✓" : "Email me this statement"}
+          </Btn>
           <Btn variant="secondary" size="sm" sx={{ background:C.white }}><Icon name="print" size={13}/>Print / Save as PDF</Btn>
           <Btn variant="secondary" size="sm" sx={{ background:"transparent", color:C.white, border:"1px solid rgba(255,255,255,0.4)" }} onClick={()=>navigate("/member")}>Close</Btn>
         </div>

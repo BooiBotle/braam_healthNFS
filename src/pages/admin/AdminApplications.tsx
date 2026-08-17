@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
-import { Search, FileText, Download } from 'lucide-react';
+import { Search, FileText, Download, User, Shield, Check, X, CreditCard, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
-import { User, Shield, Check, X, CreditCard, Calendar } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { logAudit } from '../../lib/api/audit';
+
 const AdminApplications = () => {
+  const { user } = useAuth();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +40,31 @@ const AdminApplications = () => {
       console.error('Error fetching applications:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApplicationStatus = async (appId: string, status: string, applicantName: string) => {
+    try {
+      const { error } = await supabase.from('applications').update({ status, reviewed_at: new Date().toISOString() }).eq('id', appId);
+      if (error) throw error;
+      
+      // Leave a footprint
+      await logAudit({
+        performed_by: user?.id || 'system',
+        performer_name: user?.name || 'Admin',
+        action: `application_${status}`,
+        entity_type: 'application',
+        entity_id: appId,
+        details: `Application for ${applicantName} was ${status} by ${user?.name || 'Admin'}`,
+      });
+
+      setApplications(prev => prev.map(a => a.id === appId ? { ...a, status } : a));
+      if (selectedApp && selectedApp.id === appId) {
+        setSelectedApp({ ...selectedApp, status });
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update application status');
     }
   };
 
@@ -253,10 +281,16 @@ const AdminApplications = () => {
 
             {selectedApp.status === 'submitted' || selectedApp.status === 'awaiting_approval' ? (
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                <button 
+                  onClick={() => handleApplicationStatus(selectedApp.id, 'approved', selectedApp.applicant_name)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                >
                   <Check size={18} /> Approve
                 </button>
-                <button style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fff', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
+                <button 
+                  onClick={() => handleApplicationStatus(selectedApp.id, 'rejected', selectedApp.applicant_name)}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fff', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}
+                >
                   <X size={18} /> Reject
                 </button>
               </div>

@@ -47,6 +47,21 @@ const AdminAppointments = () => {
     }
   };
 
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
+      if (error) throw error;
+      
+      setAppointments(prev => prev.map(apt => apt.id === id ? { ...apt, status } : apt));
+      if (selectedAppointment && selectedAppointment.id === id) {
+        setSelectedAppointment({ ...selectedAppointment, status });
+      }
+    } catch (err) {
+      console.error('Failed to update status', err);
+      alert('Failed to update appointment status');
+    }
+  };
+
   const filteredAppointments = appointments.filter(apt => {
     const profile = apt.members?.profiles;
     const name = `${profile?.first_name || ''} ${profile?.last_name || ''}`.toLowerCase();
@@ -292,15 +307,31 @@ const AdminAppointments = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-                Mark Completed
-              </button>
-              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: 'pointer' }}>
-                Reschedule
-              </button>
-              <button style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
-                Cancel
-              </button>
+              {selectedAppointment.status === 'pending' && (
+                <>
+                  <button onClick={() => updateStatus(selectedAppointment.id, 'cancelled')} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
+                    Reject / Cancel
+                  </button>
+                  <button onClick={() => updateStatus(selectedAppointment.id, 'confirmed')} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#0ea5e9', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                    Confirm Booking
+                  </button>
+                </>
+              )}
+              {selectedAppointment.status === 'confirmed' && (
+                <>
+                  <button onClick={() => updateStatus(selectedAppointment.id, 'cancelled')} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #ef4444', background: '#fef2f2', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
+                    Cancel Booking
+                  </button>
+                  <button onClick={() => updateStatus(selectedAppointment.id, 'completed')} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#10b981', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                    Mark Completed
+                  </button>
+                </>
+              )}
+              {(selectedAppointment.status === 'completed' || selectedAppointment.status === 'cancelled') && (
+                <div style={{ flex: 1, padding: '0.75rem', textAlign: 'center', color: '#64748b', fontSize: '0.875rem', fontWeight: 500 }}>
+                  This appointment is {selectedAppointment.status}.
+                </div>
+              )}
             </div>
           </div>
         )}

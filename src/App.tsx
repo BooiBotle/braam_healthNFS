@@ -10,6 +10,7 @@ import TermsPage from './pages/public/TermsPage';
 import PrivacyPage from './pages/public/PrivacyPage';
 import PlansPage from './pages/public/PlansPage';
 import PopiaPage from './pages/public/PopiaPage';
+import MemberProfilePublic from './pages/public/MemberProfilePublic';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -53,12 +54,14 @@ import AdminOnboarding from './pages/admin/AdminOnboarding';
 import AdminAppointments from './pages/admin/AdminAppointments';
 import AdminSystemUsers from './pages/admin/AdminSystemUsers';
 import AdminDebitOrders from './pages/admin/AdminDebitOrders';
+import AdminStatements from './pages/admin/AdminStatements';
 import AdminMandates from './pages/admin/AdminMandates';
 import AdminReconciliation from './pages/admin/AdminReconciliation';
 import AdminPlanChanges from './pages/admin/AdminPlanChanges';
 import AdminKYC from './pages/admin/AdminKYC';
 import AdminPOPIA from './pages/admin/AdminPOPIA';
 import AdminAgreements from './pages/admin/AdminAgreements';
+import AdminCommunications from './pages/admin/AdminCommunications';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
 import AdminCards from './pages/admin/AdminCards';
 import AdminCardsGallery from './pages/admin/AdminCardsGallery';
@@ -98,6 +101,7 @@ function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/popia" element={<PopiaPage />} />
             <Route path="/plans" element={<PlansPage />} />
+            <Route path="/member-profile/:cardNumber" element={<MemberProfilePublic />} />
             
             {/* Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -152,10 +156,12 @@ function App() {
                 <Route path="appointments" element={<AdminAppointments />} />
                 <Route path="system-users" element={<AdminSystemUsers />} />
                 <Route path="debit-orders" element={<AdminDebitOrders />} />
+                <Route path="statements" element={<AdminStatements />} />
                 <Route path="mandates" element={<AdminMandates />} />
                 <Route path="reconciliation" element={<AdminReconciliation />} />
                 <Route path="plan-changes" element={<AdminPlanChanges />} />
                 <Route path="kyc" element={<AdminKYC />} />
+                <Route path="communications" element={<AdminCommunications />} />
                 <Route path="popia" element={<AdminPOPIA />} />
                 <Route path="agreements" element={<AdminAgreements />} />
                 <Route path="audit" element={<AdminAuditLog />} />

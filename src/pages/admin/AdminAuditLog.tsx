@@ -17,77 +17,25 @@ const AdminAuditLog = () => {
   const fetchAuditData = async () => {
     setLoading(true);
     try {
-      // Since there is no dedicated audit_logs table yet, we will construct a live audit 
-      // trail by combining recent applications and consultations to show real database activity.
-      const [appRes, consultRes] = await Promise.all([
-        supabase.from('applications').select('id, applicant_name, status, created_at, reviewed_at').order('created_at', { ascending: false }).limit(20),
-        supabase.from('consultations').select('id, status, created_at, members(profiles(first_name, last_name))').order('created_at', { ascending: false }).limit(20)
-      ]);
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-      const unifiedLogs: any[] = [];
+      if (error) throw error;
 
-      // Process Consultations
-      consultRes.data?.forEach(consult => {
-        const mem = consult.members as any;
-        const memberName = mem?.profiles ? 
-          `${mem.profiles.first_name || mem.profiles[0]?.first_name} ${mem.profiles.last_name || mem.profiles[0]?.last_name}` : 'Unknown Member';
-        
-        unifiedLogs.push({
-          id: `consult-${consult.id}`,
-          action: 'consultation_logged',
-          category: 'clinic',
-          user: 'Clinic Staff',
-          details: `Logged a ${consult.status} consultation for ${memberName}`,
-          severity: 'info',
-          timestamp: consult.created_at,
-          metadata: consult
-        });
-      });
+      const unifiedLogs = (data || []).map((log: any) => ({
+        id: log.id,
+        action: log.action,
+        category: log.entity_type || 'system',
+        user: log.performer_name || 'System',
+        details: log.metadata?.details || `Performed ${log.action} on ${log.entity_type || 'system'}`,
+        severity: log.action.includes('reject') || log.action.includes('cancel') || log.action.includes('suspend') ? 'warning' : 'info',
+        timestamp: log.created_at,
+        metadata: log
+      }));
 
-      // Process Applications
-      appRes.data?.forEach(app => {
-        unifiedLogs.push({
-          id: `app-create-${app.id}`,
-          action: 'application_created',
-          category: 'application',
-          user: app.applicant_name,
-          details: 'Submitted a new membership application',
-          severity: 'info',
-          timestamp: app.created_at,
-          metadata: app
-        });
-
-        if (app.reviewed_at) {
-          unifiedLogs.push({
-            id: `app-review-${app.id}`,
-            action: `application_${app.status}`,
-            category: 'application',
-            user: 'System Admin',
-            details: `Application for ${app.applicant_name} was ${app.status}`,
-            severity: app.status === 'approved' ? 'success' : 'warning',
-            timestamp: app.reviewed_at,
-            metadata: app
-          });
-        }
-      });
-
-      // Simulate System Logs (fetching latest profiles or auth events)
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name, portal_role, created_at').order('created_at', { ascending: false }).limit(10);
-      profiles?.forEach(prof => {
-        unifiedLogs.push({
-          id: `sys-${prof.id}`,
-          action: 'user_registered',
-          category: 'system',
-          user: prof.full_name || 'New User',
-          details: `New ${prof.portal_role} account was created in the system.`,
-          severity: 'info',
-          timestamp: prof.created_at,
-          metadata: prof
-        });
-      });
-
-      // Sort combined logs by timestamp descending
-      unifiedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setLogs(unifiedLogs);
 
     } catch (error) {
