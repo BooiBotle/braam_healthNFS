@@ -71,12 +71,25 @@ export default function UpgradePlan() {
         updateData.status = 'pending';
       }
 
-      const { error } = await supabase
+      // 1. Update member with requested_plan_id
+      const { error: memberError } = await supabase
         .from('members')
         .update(updateData)
         .eq('id', member.id);
 
-      if (error) throw error;
+      if (memberError) throw memberError;
+
+      // 2. Insert into plan_changes table so admins see it in AdminPlanChanges
+      const { error: planChangeError } = await supabase
+        .from('plan_changes')
+        .insert({
+          member_id: member.id,
+          from_plan_id: member.plan_id || null,
+          to_plan_id: selectedPlan.id,
+          status: 'pending'
+        });
+
+      if (planChangeError) throw planChangeError;
 
       setAppliedPlan(selectedPlan);
       setSuccess(true);
