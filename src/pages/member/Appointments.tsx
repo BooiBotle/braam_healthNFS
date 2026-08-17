@@ -9,20 +9,55 @@ export default function Appointments() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [member, setMember] = useState<any | null>(null);
+
+  // New Appointment State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newAppt, setNewAppt] = useState({
+    appointment_date: new Date().toISOString().split('T')[0],
+    appointment_time: '09:00',
+    reason: ''
+  });
+
+  const load = async () => {
+    if (user) {
+      const mem = await getMemberDetails(user.id);
+      if (mem) {
+        setMember(mem);
+        const data = await getAppointments(mem.id);
+        setAppointments(data);
+      }
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    async function load() {
-      if (user) {
-        const mem = await getMemberDetails(user.id);
-        if (mem) {
-          const data = await getAppointments(mem.id);
-          setAppointments(data);
-        }
-      }
-      setLoading(false);
-    }
     load();
   }, [user]);
+
+  const handleCreateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!member || !newAppt.reason) return;
+    try {
+      const { supabase } = await import("../../lib/supabase");
+      const { error } = await supabase.from('appointments').insert([{
+        clinic_id: member.clinic_id,
+        member_id: member.id,
+        appointment_date: newAppt.appointment_date,
+        appointment_time: newAppt.appointment_time,
+        reason: newAppt.reason,
+        status: 'pending',
+        booked_by: user?.id
+      }]);
+      if (error) throw error;
+      setIsModalOpen(false);
+      setNewAppt({ appointment_date: new Date().toISOString().split('T')[0], appointment_time: '09:00', reason: '' });
+      load();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to request appointment');
+    }
+  };
 
   return (
     <div>
@@ -32,7 +67,9 @@ export default function Appointments() {
           <div style={S.pageTitle}>Appointments</div>
           <div style={S.pageSub}>Request and track your clinic appointments.</div>
         </div>
-        <Btn variant="primary" size="md" sx={{ background:C.navy }}><Icon name="calendar" size={14}/>Request Appointment</Btn>
+        <Btn variant="primary" size="md" sx={{ background:C.navy }} onClick={() => setIsModalOpen(true)}>
+          <Icon name="calendar" size={14}/>Request Appointment
+        </Btn>
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
         {loading ? (
@@ -72,6 +109,34 @@ export default function Appointments() {
           );
         })}
       </div>
+
+      {isModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', padding: 24, borderRadius: 16, width: '100%', maxWidth: 400 }}>
+            <h3 style={{ margin: '0 0 16px', color: C.navy }}>Request Appointment</h3>
+            <form onSubmit={handleCreateAppointment} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.grey500, marginBottom: 4 }}>Date</label>
+                  <input type="date" required value={newAppt.appointment_date} onChange={e => setNewAppt({...newAppt, appointment_date: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${C.grey100}`, boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.grey500, marginBottom: 4 }}>Time</label>
+                  <input type="time" required value={newAppt.appointment_time} onChange={e => setNewAppt({...newAppt, appointment_time: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${C.grey100}`, boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.grey500, marginBottom: 4 }}>Reason for Visit</label>
+                <input type="text" required placeholder="e.g. Checkup" value={newAppt.reason} onChange={e => setNewAppt({...newAppt, reason: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${C.grey100}`, boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <Btn variant="secondary" sx={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsModalOpen(false)}>Cancel</Btn>
+                <Btn variant="primary" sx={{ flex: 1, justifyContent: 'center', background: C.navy }} type="submit">Submit Request</Btn>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

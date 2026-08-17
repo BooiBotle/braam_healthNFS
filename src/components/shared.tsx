@@ -1,6 +1,7 @@
 // Shared design tokens, primitives, and the Icon set used by every page.
 // Import what you need: import { C, S, btn, badge, Btn, Card, ... } from "../components/shared";
 import type { CSSProperties, ReactNode, ChangeEvent } from "react";
+import QRCode from 'react-qr-code';
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 export const C = {
@@ -138,10 +139,11 @@ interface BtnProps {
   onClick?: () => void;
   sx?: CSSProperties;
   type?: "button" | "submit" | "reset";
+  disabled?: boolean;
 }
 
-export const Btn = ({ children, variant = "primary", size = "md", onClick, sx, type }: BtnProps) => (
-  <button type={type || "button"} style={{ ...btn(variant,size), ...sx }} onClick={onClick}>{children}</button>
+export const Btn = ({ children, variant = "primary", size = "md", onClick, sx, type, disabled }: BtnProps) => (
+  <button type={type || "button"} disabled={disabled} style={{ ...btn(variant,size), ...sx, opacity: disabled ? 0.6 : 1, cursor: disabled ? "not-allowed" : "pointer" }} onClick={onClick}>{children}</button>
 );
 
 interface CardProps {
@@ -247,63 +249,71 @@ interface MemberCardProps {
   status?: string;
 }
 
-export const MemberCard = ({ compact, memberNum, memberName, planName, status }: MemberCardProps) => (
-  <div style={{
-    background:`linear-gradient(135deg, ${C.navy} 0%, #0c2557 55%, ${C.navyMid} 100%)`,
-    borderRadius:16, padding:compact?20:26, color:C.white, position:"relative", overflow:"hidden",
-    boxShadow:"0 10px 30px rgba(11,27,63,0.35)", maxWidth: compact?"100%":520,
-  }}>
-    <div style={{ position:"absolute", right:-60, top:-60, width:220, height:220, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
-    <div style={{ position:"absolute", right:-20, top:-20, width:160, height:160, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", position:"relative", zIndex:1 }}>
-      <div>
-        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-          <Icon name="building" size={18} color={C.goldLt}/>
-          <span style={{ fontWeight:800, fontSize:19, letterSpacing:".3px" }}>NFS <span style={{ color:C.goldLt, fontWeight:600 }}>| INSURE</span></span>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, fontSize:11.5, color:"#9FB0CE" }}>
-          <span style={{ width:14, height:14, borderRadius:"50%", background:"#fff", display:"inline-block" }}/>
-          Braam Health Centre
-        </div>
-      </div>
-      <span style={{ ...badge("transparent","#E8B85A"), border:`1px solid ${C.goldLt}`, fontSize:10.5 }}>{status?.toUpperCase() || "ACTIVE"}</span>
-    </div>
-
-    <div style={{ marginTop:22, position:"relative", zIndex:1, display:"flex", justifyContent:"space-between" }}>
-      <div>
-        <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:6 }}>Membership Number</div>
-        <div style={{ fontSize:21, fontWeight:700, letterSpacing:"2px", fontFamily:"monospace" }}>{memberNum || "NFS8 9012 3456 7"}</div>
-
-        <div style={{ display:"flex", gap:40, marginTop:18 }}>
-          <div>
-            <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:4 }}>Member</div>
-            <div style={{ fontWeight:700, fontSize:14.5 }}>{memberName?.toUpperCase() || "EZILE GCSAMBA"}</div>
+export const MemberCard = ({ compact, memberNum, memberName, planName, status }: MemberCardProps) => {
+  const cardNumber = memberNum || 'NFS8 9012 3456 7';
+  // QR encodes a deep-link to the public member profile page
+  const qrValue = `${window.location.origin}/member-profile/${encodeURIComponent(cardNumber)}`;
+  
+  return (
+    <div style={{
+      background:`linear-gradient(135deg, ${C.navy} 0%, #0c2557 55%, ${C.navyMid} 100%)`,
+      borderRadius:16, padding:compact?20:26, color:C.white, position:"relative", overflow:"hidden",
+      boxShadow:"0 10px 30px rgba(11,27,63,0.35)", maxWidth: compact?"100%":520,
+    }}>
+      <div style={{ position:"absolute", right:-60, top:-60, width:220, height:220, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
+      <div style={{ position:"absolute", right:-20, top:-20, width:160, height:160, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.08)" }}/>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", position:"relative", zIndex:1 }}>
+        <div>
+          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <Icon name="building" size={18} color={C.goldLt}/>
+            <span style={{ fontWeight:800, fontSize:19, letterSpacing:".3px" }}>NFS <span style={{ color:C.goldLt, fontWeight:600 }}>| INSURE</span></span>
           </div>
-          <div>
-            <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:4 }}>Plan</div>
-            <div style={{ fontWeight:700, fontSize:14.5, color:C.goldLt }}>{planName?.toUpperCase() || "COUPLE"}</div>
+          <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, fontSize:11.5, color:"#9FB0CE" }}>
+            <span style={{ width:14, height:14, borderRadius:"50%", background:"#fff", display:"inline-block" }}/>
+            Braam Health Centre
           </div>
         </div>
+        <span style={{ ...badge("transparent","#E8B85A"), border:`1px solid ${C.goldLt}`, fontSize:10.5 }}>{status?.toUpperCase() || "ACTIVE"}</span>
       </div>
 
-      <div style={{ background:"#fff", borderRadius:10, width:84, height:84, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <svg width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#fff"/>
-          {Array.from({length:64}).map((_,i)=>{
-            const x=(i%8)*8, y=Math.floor(i/8)*8;
-            return ((i*7+3)%5===0) ? <rect key={i} x={x} y={y} width="8" height="8" fill="#0B1B3F"/> : null;
-          })}
-        </svg>
+      <div style={{ marginTop:22, position:"relative", zIndex:1, display:"flex", justifyContent:"space-between" }}>
+        <div>
+          <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:6 }}>Membership Number</div>
+          <div style={{ fontSize:21, fontWeight:700, letterSpacing:"2px", fontFamily:"monospace" }}>{cardNumber}</div>
+
+          <div style={{ display:"flex", gap:40, marginTop:18 }}>
+            <div>
+              <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:4 }}>Member</div>
+              <div style={{ fontWeight:700, fontSize:14.5 }}>{memberName?.toUpperCase() || "MEMBER"}</div>
+            </div>
+            <div>
+              <div style={{ fontSize:10.5, letterSpacing:"1.4px", color:"#8DA0C2", textTransform:"uppercase", marginBottom:4 }}>Plan</div>
+              <div style={{ fontWeight:700, fontSize:14.5, color:C.goldLt }}>{planName?.toUpperCase() || "MEMBER PLAN"}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Real scannable QR Code */}
+        <div style={{ background:"#fff", borderRadius:10, padding:8, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, alignSelf:"flex-end" }}>
+          <QRCode
+            value={qrValue}
+            size={compact ? 72 : 80}
+            bgColor="#ffffff"
+            fgColor={C.navy}
+            level="Q"
+          />
+        </div>
       </div>
+
+      {!compact && (
+        <div style={{ marginTop:20, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.12)", display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, color:"#9FB0CE" }}>
+          <span>Scan QR to view member profile & eligibility</span>
+          <span style={{ display:"flex", alignItems:"center", gap:5, color:C.goldLt, fontWeight:600 }}><Icon name="note" size={13} color={C.goldLt}/>Statement</span>
+        </div>
+      )}
     </div>
-
-    {!compact && (
-      <div style={{ marginTop:20, paddingTop:14, borderTop:"1px solid rgba(255,255,255,0.12)", display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, color:"#9FB0CE" }}>
-        <span>Show QR at reception for instant verification</span>
-        <span style={{ display:"flex", alignItems:"center", gap:5, color:C.goldLt, fontWeight:600 }}><Icon name="note" size={13} color={C.goldLt}/>Statement</span>
-      </div>
-    )}
-  </div>
-);
+  );
+};
 
 // ─── SHARED DATA (mock) ──────────────────────────────────────────────────────
 export interface ConsultEntry {

@@ -12,6 +12,24 @@ const AppointmentsList = () => {
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedAppt, setSelectedAppt] = useState<any | null>(null);
 
+  // New Appointment State
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [newAppt, setNewAppt] = useState({
+    member_id: '',
+    appointment_date: filterDate,
+    appointment_time: '09:00',
+    reason: ''
+  });
+
+  const fetchMembers = async () => {
+    let query = supabase.from('members').select('id, profiles(first_name, last_name, sa_id_number)').eq('status', 'active');
+    if (user?.clinicId) query = query.eq('clinic_id', user.clinicId);
+    const { data } = await query;
+    if (data) setMembers(data);
+  };
+
   const fetchAppointments = async () => {
     setLoading(true);
     let query = supabase
@@ -31,7 +49,32 @@ const AppointmentsList = () => {
 
   useEffect(() => {
     fetchAppointments();
+    if (user?.clinicId) fetchMembers();
   }, [filterDate, user]);
+
+  const handleCreateAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAppt.member_id || !newAppt.reason) return;
+    try {
+      const { error } = await supabase.from('appointments').insert([{
+        clinic_id: user?.clinicId,
+        member_id: newAppt.member_id,
+        appointment_date: newAppt.appointment_date,
+        appointment_time: newAppt.appointment_time,
+        reason: newAppt.reason,
+        status: 'confirmed',
+        booked_by: user?.id
+      }]);
+      if (error) throw error;
+      setIsNewModalOpen(false);
+      setNewAppt({ member_id: '', appointment_date: filterDate, appointment_time: '09:00', reason: '' });
+      setMemberSearchQuery('');
+      fetchAppointments();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create appointment');
+    }
+  };
 
   const updateStatus = async (id: string, status: string) => {
     await supabase.from('appointments').update({ status }).eq('id', id);
@@ -59,6 +102,9 @@ const AppointmentsList = () => {
               style={{ paddingLeft: 'var(--sp-10)' }} 
             />
           </div>
+          <button onClick={() => setIsNewModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.625rem 1.25rem', borderRadius: '8px', background: '#0B1B3F', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
+            + Book Appointment
+          </button>
         </div>
       </div>
 
@@ -226,13 +272,102 @@ const AppointmentsList = () => {
           </div>
         )}
       </Modal>
+
+      {/* New Appointment Modal */}
+      <Modal isOpen={isNewModalOpen} onClose={() => setIsNewModalOpen(false)} title="Book New Appointment" maxWidth="500px">
+        {!newAppt.member_id ? (
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Select Member</label>
+            <div style={{ position: 'relative', marginBottom: '1rem' }}>
+              <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                type="text" placeholder="Search member by name or ID..." 
+                value={memberSearchQuery} onChange={e => setMemberSearchQuery(e.target.value)}
+                style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.25rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              {members.filter(m => {
+                const s = memberSearchQuery.toLowerCase();
+                return m.profiles?.first_name?.toLowerCase().includes(s) || 
+                       m.profiles?.last_name?.toLowerCase().includes(s) || 
+                       m.profiles?.sa_id_number?.includes(s);
+              }).map(m => (
+                <div 
+                  key={m.id} 
+                  onClick={() => setNewAppt({...newAppt, member_id: m.id})}
+                  style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                    <User size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{m.profiles?.first_name} {m.profiles?.last_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>ID: {m.profiles?.sa_id_number || 'N/A'}</div>
+                  </div>
+                </div>
+              ))}
+              {members.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>No active members found.</div>}
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleCreateAppointment} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#0B1B3F', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
+                  {members.find(m => m.id === newAppt.member_id)?.profiles?.first_name?.[0]}
+                  {members.find(m => m.id === newAppt.member_id)?.profiles?.last_name?.[0]}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {members.find(m => m.id === newAppt.member_id)?.profiles?.first_name} {members.find(m => m.id === newAppt.member_id)?.profiles?.last_name}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Selected Member</div>
+                </div>
+              </div>
+              <button type="button" onClick={() => setNewAppt({...newAppt, member_id: ''})} style={{ fontSize: '0.75rem', color: '#3b82f6', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                Change
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Date</label>
+                <input 
+                  type="date" required value={newAppt.appointment_date} 
+                  onChange={e => setNewAppt({...newAppt, appointment_date: e.target.value})}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Time</label>
+                <input 
+                  type="time" required value={newAppt.appointment_time} 
+                  onChange={e => setNewAppt({...newAppt, appointment_time: e.target.value})}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Reason for Visit</label>
+              <input 
+                type="text" required placeholder="e.g. Flu symptoms" value={newAppt.reason} 
+                onChange={e => setNewAppt({...newAppt, reason: e.target.value})}
+                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button type="button" onClick={() => setIsNewModalOpen(false)} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, color: '#64748b' }}>Cancel</button>
+              <button type="submit" style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#0B1B3F', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Book Appointment</button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </>
   );
 };
 
 export default AppointmentsList;
-
-
-
-
-
