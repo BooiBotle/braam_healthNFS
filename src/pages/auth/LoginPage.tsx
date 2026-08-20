@@ -234,9 +234,10 @@ const LoginPage = () => {
                   <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>OR</span>
                   <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
                 </div>
-                <button onClick={handleGoogleLogin} className="btn btn-outline" style={{ width: '100%', padding: 'var(--sp-3)' }}>
-                  <span style={{ fontWeight: 800, fontSize: '16px', marginRight: '6px', background: 'linear-gradient(135deg, #EA4335, #FBBC05, #34A853, #4285F4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>G</span>
+                <button disabled className="btn btn-outline" style={{ width: '100%', padding: 'var(--sp-3)', cursor: 'not-allowed', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontWeight: 800, fontSize: '16px', marginRight: '6px', background: 'linear-gradient(135deg, #EA4335, #FBBC05, #34A853, #4285F4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'grayscale(100%)' }}>G</span>
                   Continue with Google
+                  <span style={{ fontSize: '10px', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px', fontWeight: 700 }}>Coming Soon</span>
                 </button>
               </>
             )}

@@ -2,56 +2,63 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getMemberDetails, type Member } from "../../lib/api/member";
+import { getActiveClinics, getPlansForClinic, type Clinic, type ClinicPlan } from "../../lib/api/clinics";
 import { supabase } from "../../lib/supabase";
 import { C, S, Icon, Btn, Card } from "../../components/shared";
 import { motion, AnimatePresence } from "framer-motion";
+import { MapPin, Info } from "lucide-react";
+import PlanDetailsModal from "../../components/PlanDetailsModal";
 import QRCode from "react-qr-code";
 
-interface Plan {
-  id: string;
-  name: string;
-  description: string;
-  monthly_fee_cents: number;
-  consultations_pm: number;
-  max_members: number;
-  includes_medication: boolean;
-  includes_24h_access: boolean;
-  includes_chronic: boolean;
-  most_popular: boolean;
-  is_active: boolean;
-  display_order: number;
-}
+type Plan = ClinicPlan;
 
 export default function UpgradePlan() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [member, setMember] = useState<Member | null>(null);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [applying, setApplying] = useState(false);
   const [success, setSuccess] = useState(false);
   const [appliedPlan, setAppliedPlan] = useState<Plan | null>(null);
+  const [detailsPlan, setDetailsPlan] = useState<ClinicPlan | null>(null);
 
   const hasNoPlan = !member?.plan_id;
 
   useEffect(() => {
-    async function load() {
+    async function init() {
+      let mem;
       if (user) {
-        const mem = await getMemberDetails(user.id);
+        mem = await getMemberDetails(user.id);
         setMember(mem);
       }
+      
+      const activeClinics = await getActiveClinics();
+      setClinics(activeClinics);
+      
+      const defaultClinicId = mem?.clinic_id || (activeClinics.length > 0 ? activeClinics[0].id : '');
+      if (defaultClinicId) {
+        setSelectedClinicId(defaultClinicId);
+      } else {
+        setLoading(false);
+      }
+    }
+    init();
+  }, [user]);
 
-      const { data } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
+  useEffect(() => {
+    async function loadPlans() {
+      if (!selectedClinicId) return;
+      setLoading(true);
+      const data = await getPlansForClinic(selectedClinicId);
       setPlans(data || []);
       setLoading(false);
     }
-    load();
-  }, [user]);
+    loadPlans();
+  }, [selectedClinicId]);
 
   const handleApply = async () => {
     if (!selectedPlan || !member) return;
@@ -212,6 +219,37 @@ export default function UpgradePlan() {
         </div>
       </div>
 
+      {/* Clinic Selector */}
+      {clinics.length > 0 && (
+        <div style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 12, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Select Your Clinic
+          </label>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', background: C.offWhite, padding: 6, borderRadius: 20, border: `1px solid ${C.grey100}` }}>
+            {clinics.map(c => (
+              <button
+                key={c.id}
+                onClick={() => {
+                  setSelectedClinicId(c.id);
+                  setSelectedPlan(null);
+                }}
+                style={{
+                  padding: '10px 20px', borderRadius: 16,
+                  border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                  display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+                  background: selectedClinicId === c.id ? C.teal : 'transparent',
+                  color: selectedClinicId === c.id ? '#fff' : C.grey700,
+                  boxShadow: selectedClinicId === c.id ? '0 4px 12px rgba(19, 168, 158, 0.3)' : 'none',
+                }}
+              >
+                <MapPin size={16} />
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Plans Grid */}
       {plans.length === 0 ? (
         <Card>
@@ -323,6 +361,20 @@ export default function UpgradePlan() {
                     {isSelected ? "✓ Selected — Click Apply below" : "Click to select this plan"}
                   </div>
                 )}
+                
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDetailsPlan(p); }}
+                  style={{ 
+                    width: '100%', padding: '10px', fontSize: '12px', fontWeight: 600, marginTop: '10px',
+                    background: 'transparent', color: C.grey700, border: `1px solid ${C.grey100}`,
+                    borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = C.grey100; e.currentTarget.style.color = C.navy; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.grey700; }}
+                >
+                  <Info size={14} /> View Details
+                </button>
               </motion.div>
             );
           })}
@@ -388,6 +440,12 @@ export default function UpgradePlan() {
           <li>If payment is not received, the admin may place your account on hold.</li>
         </ul>
       </Card>
+
+      <PlanDetailsModal 
+        plan={detailsPlan} 
+        isOpen={!!detailsPlan} 
+        onClose={() => setDetailsPlan(null)} 
+      />
     </div>
   );
 }
