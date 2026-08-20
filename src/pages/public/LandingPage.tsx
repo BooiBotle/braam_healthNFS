@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
+import { Shield, Heart, Activity, CheckCircle, Mail, User, FileText, Stethoscope, ArrowRight, Zap, Clock, UserCheck, Briefcase, Pill, Check, X, MapPin } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Shield, Heart, Activity, CheckCircle, Mail, User, FileText, Stethoscope, ArrowRight, Zap, Clock, UserCheck, Briefcase, Pill } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import { getActiveClinics, getPlansForClinic, type Clinic, type ClinicPlan } from '../../lib/api/clinics';
+import { supabase } from '../../lib/supabase';
+import PlansCarousel from '../../components/PlansCarousel';
+
+type Plan = ClinicPlan;
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -23,6 +28,37 @@ const LandingPage = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Plans logic
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState<string>('');
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+
+  useEffect(() => {
+    async function fetchClinics() {
+      const activeClinics = await getActiveClinics();
+      setClinics(activeClinics);
+      if (activeClinics.length > 0) {
+        setSelectedClinicId(activeClinics[0].id);
+      } else {
+        setLoadingPlans(false);
+      }
+    }
+    fetchClinics();
+  }, []);
+
+  useEffect(() => {
+    async function loadPlans() {
+      if (!selectedClinicId) return;
+      setLoadingPlans(true);
+      const data = await getPlansForClinic(selectedClinicId);
+      setPlans(data || []);
+      setLoadingPlans(false);
+    }
+    loadPlans();
+  }, [selectedClinicId]);
+
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,106 +278,43 @@ const LandingPage = () => {
             </motion.p>
           </motion.div>
 
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
-            className="plans-grid-landing"
-          >
-            {[
-              {
-                name: 'Basic Health', price: 'R599', suffix: '/mo', members: '1 member',
-                icon: <Heart size={16} />, iconBg: 'var(--accent-subtle)', iconColor: 'var(--accent)',
-                features: ['3 GP consults/month', 'Basic dispensed meds', 'Medical certificates', 'Sick notes'],
-                popular: false, badge: null, disabled: false,
-              },
-              {
-                name: 'Braam Health', price: 'R888', suffix: '/mo', members: '1 member',
-                icon: <Stethoscope size={16} />, iconBg: 'var(--gold-subtle)', iconColor: 'var(--gold)',
-                features: ['3 GP consults/month', 'All oral meds in stock', 'IMI injections', 'Prescriptions', 'Minor surgery'],
-                popular: true, badge: 'MOST POPULAR', disabled: false,
-              },
-              {
-                name: 'Braam Health Plus+', price: 'R1,333', suffix: '/mo', members: '2 members',
-                icon: <Shield size={16} />, iconBg: 'var(--accent-subtle)', iconColor: 'var(--accent)',
-                features: ['6 GP consults/month', 'All meds in stock', 'Nebulization & oxygen', 'IV therapy', '+1 relative'],
-                popular: false, badge: 'BEST VALUE', disabled: false,
-              },
-              {
-                name: 'Corporate', price: 'R499', suffix: '/staff/mo', members: 'Per employee',
-                icon: <Briefcase size={16} />, iconBg: 'var(--accent-subtle)', iconColor: 'var(--accent)',
-                features: ['3 GP consults/month', 'Basic dispensed meds', 'Chronic prescriptions', 'Med exams & forms'],
-                popular: false, badge: 'MIN. 10 STAFF', disabled: false,
-              },
-              {
-                name: 'Chronic Programme', price: 'Coming Soon', suffix: '', members: '1 member',
-                icon: <Pill size={16} />, iconBg: 'var(--gold-subtle)', iconColor: 'var(--gold)',
-                features: ['Hypertension', 'HIV treatment', 'Type 2 Diabetes', 'Asthma', 'Epilepsy'],
-                popular: false, badge: 'CHRONIC CARE', disabled: true,
-              },
-            ].map((plan, i) => (
-              <motion.div
-                key={i}
-                variants={fadeUp}
-                className="card card-interactive"
-                style={{
-                  padding: 'var(--sp-6)',
-                  border: plan.popular ? '2px solid var(--gold)' : undefined,
-                  boxShadow: plan.popular ? 'var(--shadow-lg), var(--shadow-glow-gold)' : undefined,
-                  position: 'relative',
-                  display: 'flex', flexDirection: 'column',
-                }}
-              >
-                {plan.badge && (
-                  <div style={{
-                    position: 'absolute', top: '-10px', right: 'var(--sp-4)',
-                    background: plan.popular ? 'linear-gradient(135deg, var(--gold), var(--gold-hover))' : 'var(--bg-surface-sunken)',
-                    color: plan.popular ? '#1a1a1a' : 'var(--text-secondary)',
-                    padding: '2px 10px', borderRadius: 'var(--radius-full)',
-                    fontSize: '9px', fontWeight: 800, letterSpacing: '0.06em',
-                    border: plan.popular ? 'none' : '1px solid var(--border)',
-                    boxShadow: plan.popular ? '0 4px 12px var(--gold-glow)' : 'none',
-                  }}>
-                    {plan.badge}
-                  </div>
-                )}
+          {/* Clinic Selector */}
+          {clinics.length > 0 && (
+            <div style={{ marginBottom: 'var(--sp-12)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <label style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-heading)', marginBottom: 'var(--sp-4)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                Select Your Clinic
+              </label>
+              <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', justifyContent: 'center', background: 'var(--bg-surface-sunken)', padding: '6px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)' }}>
+                {clinics.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedClinicId(c.id)}
+                    style={{
+                      padding: '10px 20px', borderRadius: 'var(--radius-lg)',
+                      border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)',
+                      display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s',
+                      background: selectedClinicId === c.id ? 'var(--accent)' : 'transparent',
+                      color: selectedClinicId === c.id ? '#fff' : 'var(--text-secondary)',
+                      boxShadow: selectedClinicId === c.id ? '0 4px 12px var(--accent-subtle)' : 'none',
+                    }}
+                  >
+                    <MapPin size={16} />
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginBottom: 'var(--sp-4)' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-md)', background: plan.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: plan.iconColor }}>
-                    {plan.icon}
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-heading)', lineHeight: 1.2 }}>{plan.name}</p>
-                    <p style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{plan.members}</p>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 'var(--sp-4)' }}>
-                  <span style={{ fontSize: plan.disabled ? 'var(--text-lg)' : 'var(--text-2xl)', fontWeight: 800, color: plan.popular ? 'var(--gold)' : plan.disabled ? 'var(--text-muted)' : 'var(--text-heading)', letterSpacing: '-0.02em' }}>
-                    {plan.price}
-                  </span>
-                  {plan.suffix && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginLeft: '2px' }}>{plan.suffix}</span>}
-                </div>
-
-                <div style={{ height: '1px', background: 'var(--border)', marginBottom: 'var(--sp-4)' }} />
-
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', marginBottom: 'var(--sp-5)' }}>
-                  {plan.features.map((f, fi) => (
-                    <li key={fi} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>
-                      <CheckCircle size={12} color={plan.popular ? 'var(--gold)' : 'var(--accent)'} style={{ flexShrink: 0 }} />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  to={plan.disabled ? '#' : '/apply'}
-                  className={`btn ${plan.popular ? 'btn-gold' : 'btn-outline'}`}
-                  style={{ width: '100%', fontSize: 'var(--text-xs)', pointerEvents: plan.disabled ? 'none' : 'auto', opacity: plan.disabled ? 0.4 : 1 }}
-                >
-                  {plan.disabled ? 'Coming Soon' : 'Apply Now'} {!plan.disabled && <ArrowRight size={12} />}
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
+          {loadingPlans ? (
+            <div style={{ textAlign: 'center', padding: 'var(--sp-10)' }}>Loading plans...</div>
+          ) : plans.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 'var(--sp-10)', color: 'var(--text-muted)' }}>
+              No plans available for this clinic.
+            </div>
+          ) : (
+            <PlansCarousel plans={plans} isLandingPage={true} />
+          )}
 
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} style={{ textAlign: 'center', marginTop: 'var(--sp-10)' }}>
             <Link to="/plans" style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>

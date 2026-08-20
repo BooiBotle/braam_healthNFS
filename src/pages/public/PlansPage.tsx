@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Check, Heart, Stethoscope, Briefcase, Pill, User, X, ArrowRight } from 'lucide-react';
+import { Shield, Check, Heart, Stethoscope, Briefcase, Pill, User, X, ArrowRight, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import { getActiveClinics, getPlansForClinic, type Clinic, type ClinicPlan } from '../../lib/api/clinics';
+import PlansCarousel from '../../components/PlansCarousel';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -10,38 +13,7 @@ const fadeUp = {
 };
 const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
 
-const plans = [
-  {
-    name: 'Basic Health', members: '1 Member', price: 'R599', suffix: '/mo',
-    icon: <Heart size={18} />, iconBg: 'var(--accent-subtle)', iconColor: 'var(--accent)',
-    features: ['3 GP consultations/month', '3 basic dispensed medications', 'Medical assessments & certificates', 'Bedside medical examinations', 'Sick notes & medical reports', 'Referral letters', 'Family planning'],
-    popular: false, badge: null, disabled: false,
-  },
-  {
-    name: 'Braam Health', members: '1 Member', price: 'R888', suffix: '/mo',
-    icon: <Stethoscope size={18} />, iconBg: 'var(--gold-subtle)', iconColor: 'var(--gold)',
-    features: ['3 GP consultations/month', 'All dispensed oral medication in stock', 'Written prescriptions', 'Injectable medication (IMI)', 'Minor surgical procedures', 'Ear syringing', 'ECG (heart trace)', 'Chronic medication prescriptions', 'Family planning'],
-    popular: true, badge: 'MOST POPULAR', disabled: false,
-  },
-  {
-    name: 'Braam Health Plus+', members: '2 Members', price: 'R1,333', suffix: '/mo',
-    icon: <Shield size={18} />, iconBg: 'var(--accent-subtle)', iconColor: 'var(--accent)',
-    features: ['6 GP consultations/month', 'All dispensed medication in stock', '1 additional relative (switchable)', 'Nebulization & oxygen therapy', 'Intravenous therapy (IVI)', 'Minor surgical procedures', 'ECG (heart trace)', 'All Braam Health benefits', 'Removal of foreign bodies'],
-    popular: false, badge: 'BEST VALUE', disabled: false,
-  },
-  {
-    name: 'Corporate', members: 'Per Employee', price: 'R499', suffix: '/mo',
-    icon: <Briefcase size={18} />, iconBg: 'var(--accent-subtle)', iconColor: 'var(--accent)',
-    features: ['3 GP consultations/month', 'Basic dispensed medication', 'Chronic medication prescriptions', 'Medical examinations & forms', 'Sick notes & medical reports', 'Minimum 10 employees'],
-    popular: false, badge: 'ENTERPRISE', disabled: false,
-  },
-  {
-    name: 'Chronic Programme', members: '1 Member', price: 'Coming Soon', suffix: '',
-    icon: <Pill size={18} />, iconBg: 'var(--gold-subtle)', iconColor: 'var(--gold)',
-    features: ['Hypertension management', 'Peptic ulcer disease', 'HIV treatment', 'Type 2 diabetes mellitus', 'Asthma management', 'Epilepsy management', 'Mental health conditions'],
-    popular: false, badge: 'CHRONIC CARE', disabled: true,
-  },
-];
+type Plan = ClinicPlan;
 
 const comparison = [
   { feature: 'GP Consultations',     basic: '3/mo',  standard: '3/mo',  plus: '6/mo' },
@@ -73,6 +45,35 @@ const CellValue = ({ value }: { value: boolean | string }) => {
 };
 
 const PlansPage = () => {
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [selectedClinicId, setSelectedClinicId] = useState<string>('');
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchClinics() {
+      const activeClinics = await getActiveClinics();
+      setClinics(activeClinics);
+      if (activeClinics.length > 0) {
+        setSelectedClinicId(activeClinics[0].id);
+      } else {
+        setLoading(false);
+      }
+    }
+    fetchClinics();
+  }, []);
+
+  useEffect(() => {
+    async function loadPlans() {
+      if (!selectedClinicId) return;
+      setLoading(true);
+      const data = await getPlansForClinic(selectedClinicId);
+      setPlans(data || []);
+      setLoading(false);
+    }
+    loadPlans();
+  }, [selectedClinicId]);
+
   return (
     <div style={{ overflow: 'hidden' }}>
       {/* Hero */}
@@ -86,7 +87,9 @@ const PlansPage = () => {
               Transparent pricing, <span className="text-gradient">zero surprises.</span>
             </motion.h1>
             <motion.p variants={fadeUp} style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-lg)', lineHeight: 1.7 }}>
-              All plans include GP consultations at Braam Health Centre in Braamfontein. Cancel anytime — no lock-in contracts, no hidden fees.
+              {selectedClinicId 
+                ? `All plans include GP consultations at ${clinics.find(c => c.id === selectedClinicId)?.name || 'our network clinics'}. Cancel anytime — no lock-in contracts, no hidden fees.`
+                : `All plans include GP consultations at our network clinics. Cancel anytime — no lock-in contracts, no hidden fees.`}
             </motion.p>
           </motion.div>
         </div>
@@ -95,74 +98,44 @@ const PlansPage = () => {
       {/* Plans Grid */}
       <section style={{ padding: 'var(--sp-20) 0' }}>
         <div className="container">
-          <motion.div
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}
-            className="plans-grid"
-          >
-            {plans.map((plan) => (
-              <motion.div
-                key={plan.name} variants={fadeUp}
-                className="card card-interactive"
-                style={{
-                  padding: 'var(--sp-8)',
-                  display: 'flex', flexDirection: 'column',
-                  position: 'relative',
-                  border: plan.popular ? '2px solid var(--gold)' : undefined,
-                  boxShadow: plan.popular ? 'var(--shadow-lg), var(--shadow-glow-gold)' : undefined,
-                }}
-              >
-                {plan.badge && (
-                  <div style={{
-                    position: 'absolute', top: '-11px', right: 'var(--sp-5)',
-                    background: plan.popular ? 'linear-gradient(135deg, var(--gold), var(--gold-hover))' : 'var(--bg-surface-sunken)',
-                    color: plan.popular ? '#1a1a1a' : 'var(--text-secondary)',
-                    padding: '3px 12px', borderRadius: 'var(--radius-full)',
-                    fontSize: '9px', fontWeight: 800, letterSpacing: '0.06em',
-                    border: plan.popular ? 'none' : '1px solid var(--border)',
-                    boxShadow: plan.popular ? '0 4px 12px var(--gold-glow)' : 'none',
-                  }}>
-                    {plan.badge}
-                  </div>
-                )}
+          
+          {/* Clinic Selector */}
+          {clinics.length > 0 && (
+            <div style={{ marginBottom: 'var(--sp-12)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <label style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--text-heading)', marginBottom: 'var(--sp-4)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                Select Your Clinic
+              </label>
+              <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap', justifyContent: 'center', background: 'var(--bg-surface-sunken)', padding: '6px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)' }}>
+                {clinics.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedClinicId(c.id)}
+                    style={{
+                      padding: '10px 20px', borderRadius: 'var(--radius-lg)',
+                      border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--text-sm)',
+                      display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s',
+                      background: selectedClinicId === c.id ? 'var(--accent)' : 'transparent',
+                      color: selectedClinicId === c.id ? '#fff' : 'var(--text-secondary)',
+                      boxShadow: selectedClinicId === c.id ? '0 4px 12px var(--accent-subtle)' : 'none',
+                    }}
+                  >
+                    <MapPin size={16} />
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginBottom: 'var(--sp-5)' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-md)', background: plan.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: plan.iconColor }}>
-                    {plan.icon}
-                  </div>
-                  <div>
-                    <p style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--text-heading)', lineHeight: 1.2 }}>{plan.name}</p>
-                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}><User size={10} /> {plan.members}</p>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 'var(--sp-6)' }}>
-                  <span style={{ fontSize: plan.disabled ? 'var(--text-xl)' : 'var(--text-3xl)', fontWeight: 800, color: plan.popular ? 'var(--gold)' : plan.disabled ? 'var(--text-muted)' : 'var(--text-heading)', letterSpacing: '-0.02em' }}>
-                    {plan.price}
-                  </span>
-                  {plan.suffix && <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginLeft: '2px' }}>{plan.suffix}</span>}
-                </div>
-
-                <div style={{ height: '1px', background: 'var(--border)', marginBottom: 'var(--sp-5)' }} />
-
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginBottom: 'var(--sp-6)' }}>
-                  {plan.features.map((f, fi) => (
-                    <li key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                      <Check size={14} color={plan.popular ? 'var(--gold)' : 'var(--accent)'} style={{ marginTop: '2px', flexShrink: 0 }} />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  to={plan.disabled ? '#' : '/apply'}
-                  className={`btn ${plan.popular ? 'btn-gold' : 'btn-outline'}`}
-                  style={{ width: '100%', pointerEvents: plan.disabled ? 'none' : 'auto', opacity: plan.disabled ? 0.4 : 1 }}
-                >
-                  {plan.disabled ? 'Coming Soon' : 'Apply Now'} {!plan.disabled && <ArrowRight size={13} />}
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 'var(--sp-10)' }}>Loading plans...</div>
+          ) : plans.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 'var(--sp-10)', color: 'var(--text-muted)' }}>
+              No plans available for this clinic.
+            </div>
+          ) : (
+            <PlansCarousel plans={plans} />
+          )}
         </div>
       </section>
 
