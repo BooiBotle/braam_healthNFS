@@ -23,7 +23,7 @@ interface AuthContextType {
   signup: (name: string, email: string, role: UserRole) => void; 
   signUpWithPassword: (email: string, password: string) => Promise<{ data: any, error: Error | null }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithOAuth: (provider: 'google') => Promise<{ error: Error | null }>;
+  signInWithOAuth: (provider: 'google', redirectTo?: string) => Promise<{ error: Error | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
   logout: () => void;
   loading: boolean;
@@ -135,11 +135,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const signInWithOAuth = async (provider: 'google') => {
+  const signInWithOAuth = async (provider: 'google', redirectTo?: string) => {
     return await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectTo || window.location.origin,
       }
     });
   };
