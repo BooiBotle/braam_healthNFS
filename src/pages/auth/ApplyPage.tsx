@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Check, Lock, Mail, ShieldCheck, Building2, MapPin, Clock } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Lock, Mail, ShieldCheck, Building2, MapPin, Clock, FileText } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
@@ -15,9 +15,24 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as any } },
 };
 
+function isValidSAId(idNumber: string): boolean {
+  if (!/^\d{13}$/.test(idNumber)) return false;
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = idNumber.length - 1; i >= 0; i--) {
+    let digit = parseInt(idNumber.charAt(i), 10);
+    if (shouldDouble) {
+      if ((digit *= 2) > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum % 10 === 0;
+}
+
 const ApplyPage = () => {
   const navigate = useNavigate();
-  const { signUpWithPassword, signInWithOAuth, loginWithOtp } = useAuth();
+  const { user, signUpWithPassword, signInWithOAuth, loginWithOtp } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [idType, setIdType] = useState<'sa_id' | 'passport'>('sa_id');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,6 +62,20 @@ const ApplyPage = () => {
     });
   }, []);
 
+  // Skip Step 1 if user is already authenticated (e.g. returning from Google Auth)
+  useEffect(() => {
+    if (user && currentStep === 1) {
+      setCurrentStep(2);
+      // Pre-fill email and name from user if available
+      setFormData(prev => ({
+        ...prev,
+        email: prev.email || user.email || '',
+        firstName: prev.firstName || (user.name ? user.name.split(' ')[0] : ''),
+        lastName: prev.lastName || (user.name && user.name.split(' ').length > 1 ? user.name.split(' ').slice(1).join(' ') : '')
+      }));
+    }
+  }, [user, currentStep]);
+
   // When step changes to Step 4 (Choose Plan), fetch plans for selected clinic
   useEffect(() => {
     if (currentStep === 4 && formData.clinicId) {
@@ -70,8 +99,23 @@ const ApplyPage = () => {
     { id: '33333333-3333-3333-3333-333333333333', name: 'Premium Care', price: 850, features: ['Unlimited Consultations', 'Complete Prescriptions', '24/7 Priority'] }
   ];
 
-  const handleNext = (e?: React.FormEvent) => {
+  const handleNext = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    
+    // Step 1: Handle Google Auth immediately if selected
+    if (currentStep === 1 && formData.authMethod === 'google') {
+      await signInWithOAuth('google', window.location.origin + '/apply');
+      return; // Stop here, page will redirect
+    }
+
+    // Step 2: Validate ID Number
+    if (currentStep === 2 && idType === 'sa_id') {
+      if (!isValidSAId(formData.idNumber)) {
+        alert("Please enter a valid 13-digit South African ID number.");
+        return;
+      }
+    }
+
     if (currentStep < steps.length) setCurrentStep(c => c + 1);
   };
 
@@ -84,19 +128,18 @@ const ApplyPage = () => {
     setErrorMsg('');
 
     try {
-      let authUserId = null;
+      let authUserId = user?.id || null;
 
-      // 1. Authenticate based on chosen method
-      if (formData.authMethod === 'password') {
-        const { data, error } = await signUpWithPassword(formData.email, formData.password);
-        if (error) throw error;
-        authUserId = data.user?.id;
-      } else if (formData.authMethod === 'magiclink') {
-        const { error } = await loginWithOtp(formData.email);
-        if (error) throw error;
-      } else if (formData.authMethod === 'google') {
-        await signInWithOAuth('google');
-        return; 
+      // 1. Authenticate based on chosen method (only if not already authenticated via Google)
+      if (!authUserId) {
+        if (formData.authMethod === 'password') {
+          const { data, error } = await signUpWithPassword(formData.email, formData.password);
+          if (error) throw error;
+          authUserId = data.user?.id;
+        } else if (formData.authMethod === 'magiclink') {
+          const { error } = await loginWithOtp(formData.email);
+          if (error) throw error;
+        }
       }
 
       // Ensure a clinicId is assigned
@@ -232,17 +275,21 @@ const ApplyPage = () => {
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginBottom: 'var(--sp-6)' }}>
-                    <button type="button" onClick={() => setFormData({ ...formData, authMethod: 'google' })} style={{
+                    <button type="button" disabled style={{
                       display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', padding: 'var(--sp-4)',
-                      background: formData.authMethod === 'google' ? 'var(--accent-subtle)' : 'transparent',
-                      border: formData.authMethod === 'google' ? '2px solid var(--navy)' : '1px solid var(--border)',
-                      borderRadius: 'var(--radius-lg)', cursor: 'pointer', textAlign: 'left', transition: 'all 200ms'
+                      background: 'var(--bg-surface-sunken)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-lg)', cursor: 'not-allowed', textAlign: 'left', transition: 'all 200ms',
+                      opacity: 0.6
                     }}>
                       <div style={{ background: 'white', padding: 'var(--sp-2)', borderRadius: '50%', border: '1px solid var(--border)' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: 'var(--text-sm)' }}>Continue with Google</div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center' }}>
+                          Continue with Google
+                          <span style={{ fontSize: '10px', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px', fontWeight: 700 }}>Coming Soon</span>
+                        </div>
                         <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>Fastest setup</div>
                       </div>
                     </button>
@@ -478,22 +525,52 @@ const ApplyPage = () => {
                     Banking details for monthly membership collection.
                   </p>
 
-                  <div className="form-group">
-                    <label className="form-label">Bank Name</label>
-                    <select className="form-input" required value={formData.bankName} onChange={e => setFormData({ ...formData, bankName: e.target.value })}>
-                      <option value="">Select Bank</option>
-                      <option value="fnb">FNB</option>
-                      <option value="standard">Standard Bank</option>
-                      <option value="absa">ABSA</option>
-                      <option value="nedbank">Nedbank</option>
-                      <option value="capitec">Capitec</option>
-                    </select>
+                  <div className="grid-2" style={{ gap: 'var(--sp-5)' }}>
+                    <div className="form-group">
+                      <label className="form-label">Bank Name</label>
+                      <select className="form-input" required value={formData.bankName} onChange={e => setFormData({ ...formData, bankName: e.target.value })}>
+                        <option value="">Select Bank</option>
+                        <option value="fnb">First National Bank (FNB)</option>
+                        <option value="standard">Standard Bank</option>
+                        <option value="absa">ABSA</option>
+                        <option value="nedbank">Nedbank</option>
+                        <option value="capitec">Capitec Bank</option>
+                        <option value="discovery">Discovery Bank</option>
+                        <option value="investec">Investec</option>
+                        <option value="tymebank">TymeBank</option>
+                        <option value="african">African Bank</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Branch Code</label>
+                      <input type="text" className="form-input" required placeholder="e.g. 250655"
+                        value={formData.branchCode} onChange={e => setFormData({ ...formData, branchCode: e.target.value })} />
+                    </div>
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Account Holder Name</label>
-                    <input type="text" className="form-input" required
+                    <input type="text" className="form-input" required placeholder="As it appears on your statement"
                       value={formData.accountHolder} onChange={e => setFormData({ ...formData, accountHolder: e.target.value })} />
+                  </div>
+
+                  <div className="grid-2" style={{ gap: 'var(--sp-5)' }}>
+                    <div className="form-group">
+                      <label className="form-label">Account Number</label>
+                      <input type="text" className="form-input" required placeholder="Account number"
+                        value={formData.accountNumber} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })} />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Account Type</label>
+                      <select className="form-input" required value={formData.accountType} onChange={e => setFormData({ ...formData, accountType: e.target.value })}>
+                        <option value="">Select Type</option>
+                        <option value="cheque">Cheque / Current</option>
+                        <option value="savings">Savings</option>
+                        <option value="transmission">Transmission</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
@@ -526,11 +603,27 @@ const ApplyPage = () => {
                   </div>
 
                   <div className="form-group" style={{ marginBottom: 'var(--sp-8)' }}>
+                    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 'var(--sp-5)', marginBottom: 'var(--sp-5)' }}>
+                      <h3 style={{ fontSize: 'var(--text-sm)', color: 'var(--text-heading)', marginBottom: 'var(--sp-2)' }}>Terms & Conditions</h3>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.6, height: '120px', overflowY: 'auto', paddingRight: 'var(--sp-3)' }}>
+                        <p style={{ marginBottom: '8px' }}>1. <strong>Membership:</strong> This is a primary healthcare membership, not a medical aid scheme. It provides access to network clinics for GP consultations and dispensed acute medication.</p>
+                        <p style={{ marginBottom: '8px' }}>2. <strong>Debit Order Mandate:</strong> By submitting this application, you authorize NFS Insure (or its appointed payment provider) to debit the specified bank account monthly for the selected plan fee.</p>
+                        <p style={{ marginBottom: '8px' }}>3. <strong>Waiting Periods:</strong> A standard 30-day waiting period applies for new chronic medication registrations. Acute consultations are available upon activation.</p>
+                        <p style={{ marginBottom: '8px' }}>4. <strong>Cancellations:</strong> Membership may be cancelled at any time with one calendar month's written notice. No cancellation penalties apply.</p>
+                        <p>5. <strong>Data Privacy:</strong> Your personal and medical information is processed in accordance with the POPI Act.</p>
+                      </div>
+                      <div style={{ marginTop: 'var(--sp-4)', borderTop: '1px solid var(--border)', paddingTop: 'var(--sp-3)' }}>
+                        <a href="/terms.pdf" target="_blank" style={{ fontSize: 'var(--text-xs)', color: 'var(--accent)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <FileText size={14} /> Download Full Terms & Conditions (PDF)
+                        </a>
+                      </div>
+                    </div>
+
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', cursor: 'pointer' }}>
                       <input type="checkbox" style={{ marginTop: '4px', accentColor: 'var(--navy)' }} required
                         checked={formData.acceptsTerms} onChange={e => setFormData({ ...formData, acceptsTerms: e.target.checked })} />
                       <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                        I confirm that the information provided is accurate and authorize NFS Insure to debit my account monthly for membership at {formData.clinicName || 'selected clinic'}.
+                        I have read, understood, and accept the Terms & Conditions, and I authorize the monthly debit order for my {formData.clinicName || 'clinic'} membership.
                       </div>
                     </label>
                   </div>
