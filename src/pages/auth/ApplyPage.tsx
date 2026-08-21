@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Check, Lock, Mail, ShieldCheck, Building2, MapPin, Clock, FileText } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Lock, Mail, ShieldCheck, Building2, MapPin, Clock, FileText, Landmark, CreditCard, Stethoscope, Shield, Eye, EyeOff } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { getActiveClinics, getPlansForClinic, type Clinic, type ClinicPlan } from '../../lib/api/clinics';
 
-const steps = ['Account', 'Personal', 'Clinic', 'Plan', 'Disclaimers', 'Banking', 'Review'];
+const steps = ['Personal', 'Account', 'Verify Email', 'Clinic', 'Plan', 'Disclaimers', 'Banking', 'Review'];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -16,18 +16,7 @@ const fadeUp = {
 };
 
 function isValidSAId(idNumber: string): boolean {
-  if (!/^\d{13}$/.test(idNumber)) return false;
-  let sum = 0;
-  let shouldDouble = false;
-  for (let i = idNumber.length - 1; i >= 0; i--) {
-    let digit = parseInt(idNumber.charAt(i), 10);
-    if (shouldDouble) {
-      if ((digit *= 2) > 9) digit -= 9;
-    }
-    sum += digit;
-    shouldDouble = !shouldDouble;
-  }
-  return sum % 10 === 0;
+  return /^\d{13}$/.test(idNumber);
 }
 
 const ApplyPage = () => {
@@ -37,6 +26,8 @@ const ApplyPage = () => {
   const [idType, setIdType] = useState<'sa_id' | 'passport'>('sa_id');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [clinicPlans, setClinicPlans] = useState<ClinicPlan[]>([]);
@@ -45,10 +36,12 @@ const ApplyPage = () => {
   const [formData, setFormData] = useState({
     authMethod: 'password', // 'password' | 'magiclink' | 'google'
     password: '',
+    confirmPassword: '',
     firstName: '', lastName: '', idNumber: '', mobile: '', email: '', address: '',
     clinicId: '', clinicName: '',
     planId: '', planName: '', planFee: 0,
-    hasPreExisting: false, isPregnant: false, acceptsTerms: false,
+    hasPreExisting: false, isPregnant: false, agreedTerms: false,
+    agreedPopia: false, agreedMedical: false, agreedDebit: false,
     bankName: '', accountHolder: '', accountNumber: '', accountType: '', branchCode: ''
   });
 
@@ -101,19 +94,78 @@ const ApplyPage = () => {
 
   const handleNext = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setErrorMsg('');
     
-    // Step 1: Handle Google Auth immediately if selected
-    if (currentStep === 1 && formData.authMethod === 'google') {
-      await signInWithOAuth('google', window.location.origin + '/apply');
-      return; // Stop here, page will redirect
-    }
-
-    // Step 2: Validate ID Number
-    if (currentStep === 2 && idType === 'sa_id') {
-      if (!isValidSAId(formData.idNumber)) {
+    // Step 1: Personal (Validate ID Number and Phone)
+    if (currentStep === 1) {
+      if (idType === 'sa_id' && !isValidSAId(formData.idNumber)) {
         alert("Please enter a valid 13-digit South African ID number.");
         return;
       }
+      if (idType === 'passport' && !/^[A-Za-z0-9]{6,20}$/.test(formData.idNumber)) {
+        alert("Please enter a valid Passport number.");
+        return;
+      }
+      const phoneClean = formData.mobile.replace(/[\s-]/g, '');
+      const phoneRegex = /^(\+27|0)[0-9]{9}$/;
+      if (!phoneRegex.test(phoneClean)) {
+        alert("Please enter a valid South African mobile number (e.g., 082 123 4567).");
+        return;
+      }
+      setCurrentStep(2); // Go to Account
+      return;
+    }
+
+    // Step 2: Create Account
+    if (currentStep === 2) {
+      if (formData.authMethod === 'google') {
+        await signInWithOAuth('google', window.location.origin + '/apply');
+        return;
+      }
+      if (formData.authMethod === 'password' && formData.password !== formData.confirmPassword) {
+        setErrorMsg('Passwords do not match.');
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        if (formData.authMethod === 'password') {
+          const metadata = {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            full_name: `${formData.firstName} ${formData.lastName}`,
+            name: `${formData.firstName} ${formData.lastName}`,
+            phone: formData.mobile,
+            portal_role: 'member'
+          };
+          const { error } = await signUpWithPassword(formData.email, formData.password, metadata);
+          if (error) throw error;
+        } else if (formData.authMethod === 'magiclink') {
+          const { error } = await loginWithOtp(formData.email);
+          if (error) throw error;
+        }
+        setCurrentStep(3); // Go to Verify Email
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Failed to create account.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // Step 3: Verify OTP
+    if (currentStep === 3) {
+      setIsSubmitting(true);
+      try {
+        const type = formData.authMethod === 'password' ? 'signup' : 'magiclink';
+        const { error } = await supabase.auth.verifyOtp({ email: formData.email, token: otpCode, type: type as any });
+        if (error) throw error;
+        setCurrentStep(4); // Go to Clinic
+      } catch (err: any) {
+        setErrorMsg('Invalid verification code.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
     }
 
     if (currentStep < steps.length) setCurrentStep(c => c + 1);
@@ -128,19 +180,8 @@ const ApplyPage = () => {
     setErrorMsg('');
 
     try {
-      let authUserId = user?.id || null;
-
-      // 1. Authenticate based on chosen method (only if not already authenticated via Google)
-      if (!authUserId) {
-        if (formData.authMethod === 'password') {
-          const { data, error } = await signUpWithPassword(formData.email, formData.password);
-          if (error) throw error;
-          authUserId = data.user?.id;
-        } else if (formData.authMethod === 'magiclink') {
-          const { error } = await loginWithOtp(formData.email);
-          if (error) throw error;
-        }
-      }
+      let authUserId = (await supabase.auth.getUser()).data.user?.id || user?.id || null;
+      if (!authUserId) throw new Error("User session not found. Please log in again.");
 
       // Ensure a clinicId is assigned
       let clinicIdToUse = formData.clinicId;
@@ -165,6 +206,10 @@ const ApplyPage = () => {
         applicant_phone: formData.mobile,
         applicant_email: formData.email,
         applicant_id_number: formData.idNumber,
+        agreed_popia: formData.agreedPopia,
+        agreed_medical_disclosure: formData.agreedMedical,
+        agreed_debit_mandate: formData.agreedDebit,
+        agreed_terms: formData.agreedTerms,
         source: 'self_service'
       });
 
@@ -266,8 +311,8 @@ const ApplyPage = () => {
               style={{ padding: 'var(--sp-8)' }}
             >
               
-              {/* STEP 1: ACCOUNT */}
-              {currentStep === 1 && (
+              {/* STEP 2: ACCOUNT */}
+              {currentStep === 2 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Create Account</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
@@ -315,21 +360,108 @@ const ApplyPage = () => {
                   </div>
 
                   {formData.authMethod === 'password' && (
-                    <div className="form-group">
-                      <label className="form-label">Create Password</label>
-                      <input type="password" className="form-input" placeholder="Min 8 characters" required minLength={8}
-                        value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
-                    </div>
+                    <>
+                      <div className="form-group">
+                        <label className="form-label">Create Password</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 characters" required minLength={8}
+                            value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })}
+                            style={{ paddingRight: '40px' }} />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)}
+                            style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="form-group">
+                        <label className="form-label">Confirm Password</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 characters" required minLength={8}
+                            value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
+                            style={{ paddingRight: '40px' }} />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)}
+                            style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   )}
 
+                  {errorMsg && (
+                    <div style={{ color: 'var(--status-error)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-4)', padding: 'var(--sp-3)', background: 'rgba(239, 68, 68, 0.1)', borderRadius: 'var(--radius-md)' }}>
+                      {errorMsg}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--sp-8)' }}>
                     <button type="submit" className="btn btn-primary">Continue <ArrowRight size={18} /></button>
                   </div>
                 </form>
               )}
+              {/* STEP 3: VERIFY EMAIL */}
+              {currentStep === 3 && (
+                <form onSubmit={handleNext}>
+                  <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Verify Your Email</h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
+                    We've sent a verification email to <strong>{formData.email}</strong>. Enter the 6-digit code below OR click the link in the email and then check your status.
+                  </p>
 
-              {/* STEP 2: PERSONAL */}
-              {currentStep === 2 && (
+                  <div className="form-group">
+                    <label className="form-label">Verification Code</label>
+                    <input type="text" className="form-input" placeholder="123456" required
+                      style={{ fontSize: '24px', letterSpacing: '8px', textAlign: 'center' }}
+                      value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} />
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginBottom: 'var(--sp-4)' }}>
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>&mdash; OR &mdash;</span>
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginBottom: 'var(--sp-8)' }}>
+                    <button type="button" onClick={async () => {
+                      setIsSubmitting(true);
+                      setErrorMsg('');
+                      try {
+                        const { error } = await supabase.auth.signInWithPassword({
+                          email: formData.email,
+                          password: formData.password,
+                        });
+                        if (error) {
+                          if (error.message.includes('Email not confirmed')) {
+                            throw new Error('Email not confirmed yet. Please click the link in your email first.');
+                          }
+                          throw error;
+                        }
+                        setCurrentStep(4);
+                      } catch (err: any) {
+                        setErrorMsg(err.message || 'Verification check failed.');
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }} className="btn btn-ghost" disabled={isSubmitting}>
+                      {isSubmitting ? 'Checking...' : 'I clicked the link - Check Status'}
+                    </button>
+                  </div>
+                  
+                  {errorMsg && (
+                    <div style={{ color: 'var(--status-error)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-4)', padding: 'var(--sp-3)', background: 'rgba(239, 68, 68, 0.1)', borderRadius: 'var(--radius-md)' }}>
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-4)' }}>
+                    <button type="button" onClick={handleBack} className="btn btn-ghost" style={{ paddingLeft: 0 }} disabled={isSubmitting}><ArrowLeft size={18} /> Back</button>
+                    <button type="submit" className="btn btn-primary" disabled={isSubmitting || otpCode.length !== 6}>
+                      {isSubmitting ? 'Verifying...' : 'Verify Code'} <ArrowRight size={18} />
+                    </button>
+                  </div>
+                </form>
+              )}
+
+
+              {/* STEP 1: PERSONAL */}
+              {currentStep === 1 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Personal Details</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
@@ -388,7 +520,7 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 3: CLINIC SELECTION (Right before Plan!) */}
+              {/* STEP 4: CLINIC SELECTION (Right before Plan!) */}
               {currentStep === 3 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Select Clinic Branch</h2>
@@ -447,8 +579,8 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 4: CHOOSE PLAN (Filtered by Selected Clinic) */}
-              {currentStep === 4 && (
+              {/* STEP 5: CHOOSE PLAN (Filtered by Selected Clinic) */}
+              {currentStep === 5 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Choose Plan</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
@@ -491,21 +623,69 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 5: DISCLAIMERS */}
-              {currentStep === 5 && (
+              {/* STEP 6: DISCLAIMERS */}
+              {currentStep === 6 && (
                 <form onSubmit={handleNext}>
-                  <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Medical History</h2>
+                  <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Declarations & Consents</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    Please declare any pre-existing medical conditions.
+                    Please review and accept the necessary declarations to proceed with your membership.
                   </p>
 
-                  <div className="form-group" style={{ marginBottom: 'var(--sp-6)' }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ marginTop: '4px', accentColor: 'var(--navy)' }} 
-                        checked={formData.hasPreExisting} onChange={e => setFormData({ ...formData, hasPreExisting: e.target.checked })} />
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-heading)', fontSize: 'var(--text-sm)' }}>I have pre-existing chronic conditions</div>
-                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Examples: Hypertension, Diabetes, Asthma.</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', marginBottom: 'var(--sp-8)' }}>
+                    <label style={{ 
+                      display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-4)', cursor: 'pointer',
+                      padding: 'var(--sp-5)', borderRadius: 'var(--radius-lg)',
+                      border: formData.hasPreExisting ? '2px solid var(--navy)' : '1px solid var(--border)',
+                      background: formData.hasPreExisting ? 'var(--accent-subtle)' : 'var(--bg-surface-sunken)',
+                      transition: 'all 200ms'
+                    }}>
+                      <div style={{ marginTop: '2px', background: formData.hasPreExisting ? 'var(--navy)' : 'transparent', padding: '8px', borderRadius: '50%', color: formData.hasPreExisting ? 'white' : 'var(--text-muted)' }}>
+                        <Stethoscope size={20} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-heading)', fontSize: 'var(--text-base)', marginBottom: '4px' }}>Pre-existing Chronic Conditions</div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 'var(--sp-3)' }}>I declare that I have pre-existing chronic conditions (e.g. Hypertension, Diabetes, Asthma).</div>
+                        <input type="checkbox" style={{ accentColor: 'var(--navy)', transform: 'scale(1.2)' }} 
+                          checked={formData.hasPreExisting} onChange={e => setFormData({ ...formData, hasPreExisting: e.target.checked })} />
+                        <span style={{ marginLeft: '10px', fontSize: 'var(--text-sm)', fontWeight: 600 }}>Yes, I declare this</span>
+                      </div>
+                    </label>
+                    
+                    <label style={{ 
+                      display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-4)', cursor: 'pointer',
+                      padding: 'var(--sp-5)', borderRadius: 'var(--radius-lg)',
+                      border: formData.agreedMedical ? '2px solid var(--status-success)' : '1px solid var(--border)',
+                      background: formData.agreedMedical ? 'rgba(34,197,94,0.05)' : 'var(--bg-surface-sunken)',
+                      transition: 'all 200ms'
+                    }}>
+                      <div style={{ marginTop: '2px', background: formData.agreedMedical ? 'var(--status-success)' : 'transparent', padding: '8px', borderRadius: '50%', color: formData.agreedMedical ? 'white' : 'var(--text-muted)' }}>
+                        <FileText size={20} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-heading)', fontSize: 'var(--text-base)', marginBottom: '4px' }}>Medical Disclosure Consent *</div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 'var(--sp-3)' }}>I consent to the clinic sharing necessary medical records with the provider for the purpose of primary healthcare services.</div>
+                        <input type="checkbox" required style={{ accentColor: 'var(--status-success)', transform: 'scale(1.2)' }} 
+                          checked={formData.agreedMedical} onChange={e => setFormData({ ...formData, agreedMedical: e.target.checked })} />
+                        <span style={{ marginLeft: '10px', fontSize: 'var(--text-sm)', fontWeight: 600 }}>I agree to this consent</span>
+                      </div>
+                    </label>
+
+                    <label style={{ 
+                      display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-4)', cursor: 'pointer',
+                      padding: 'var(--sp-5)', borderRadius: 'var(--radius-lg)',
+                      border: formData.agreedPopia ? '2px solid var(--status-success)' : '1px solid var(--border)',
+                      background: formData.agreedPopia ? 'rgba(34,197,94,0.05)' : 'var(--bg-surface-sunken)',
+                      transition: 'all 200ms'
+                    }}>
+                      <div style={{ marginTop: '2px', background: formData.agreedPopia ? 'var(--status-success)' : 'transparent', padding: '8px', borderRadius: '50%', color: formData.agreedPopia ? 'white' : 'var(--text-muted)' }}>
+                        <Shield size={20} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-heading)', fontSize: 'var(--text-base)', marginBottom: '4px' }}>POPIA Declaration *</div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 'var(--sp-3)' }}>I understand that my personal information will be processed securely in accordance with the Protection of Personal Information Act.</div>
+                        <input type="checkbox" required style={{ accentColor: 'var(--status-success)', transform: 'scale(1.2)' }} 
+                          checked={formData.agreedPopia} onChange={e => setFormData({ ...formData, agreedPopia: e.target.checked })} />
+                        <span style={{ marginLeft: '10px', fontSize: 'var(--text-sm)', fontWeight: 600 }}>I accept the POPIA terms</span>
                       </div>
                     </label>
                   </div>
@@ -517,71 +697,103 @@ const ApplyPage = () => {
                 </form>
               )}
 
-              {/* STEP 6: BANKING */}
-              {currentStep === 6 && (
+              {/* STEP 7: BANKING */}
+              {currentStep === 7 && (
                 <form onSubmit={handleNext}>
-                  <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Debit Order Mandate</h2>
-                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    Banking details for monthly membership collection.
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginBottom: 'var(--sp-1)' }}>
+                    <div style={{ background: 'var(--accent-subtle)', color: 'var(--navy)', padding: 'var(--sp-2)', borderRadius: '50%' }}>
+                      <Landmark size={24} />
+                    </div>
+                    <h2 style={{ fontSize: 'var(--text-xl)', margin: 0 }}>Debit Order Mandate</h2>
+                  </div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)', paddingLeft: '48px' }}>
+                    Secure banking details for your monthly membership collection.
                   </p>
 
-                  <div className="grid-2" style={{ gap: 'var(--sp-5)' }}>
-                    <div className="form-group">
-                      <label className="form-label">Bank Name</label>
-                      <select className="form-input" required value={formData.bankName} onChange={e => setFormData({ ...formData, bankName: e.target.value })}>
-                        <option value="">Select Bank</option>
-                        <option value="fnb">First National Bank (FNB)</option>
-                        <option value="standard">Standard Bank</option>
-                        <option value="absa">ABSA</option>
-                        <option value="nedbank">Nedbank</option>
-                        <option value="capitec">Capitec Bank</option>
-                        <option value="discovery">Discovery Bank</option>
-                        <option value="investec">Investec</option>
-                        <option value="tymebank">TymeBank</option>
-                        <option value="african">African Bank</option>
-                      </select>
+                  <div style={{ 
+                    background: 'linear-gradient(145deg, #1A1F2C 0%, #2A3143 100%)', 
+                    padding: 'var(--sp-8)', borderRadius: 'var(--radius-xl)', 
+                    border: '1px solid rgba(255,255,255,0.1)', marginBottom: 'var(--sp-6)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.15)', color: 'white', position: 'relative', overflow: 'hidden'
+                  }}>
+                    {/* Decorative Elements */}
+                    <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '150px', height: '150px', background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)', opacity: 0.1, borderRadius: '50%' }} />
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-6)' }}>
+                      <CreditCard size={28} style={{ color: 'var(--gold)' }} />
+                      <div style={{ fontSize: 'var(--text-xs)', letterSpacing: '2px', opacity: 0.6, textTransform: 'uppercase' }}>Debit Order Form</div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">Branch Code</label>
-                      <input type="text" className="form-input" required placeholder="e.g. 250655"
-                        value={formData.branchCode} onChange={e => setFormData({ ...formData, branchCode: e.target.value })} />
+                    <div className="grid-2" style={{ gap: 'var(--sp-5)', marginBottom: 'var(--sp-5)' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '1px' }}>Bank Name</label>
+                        <select className="form-input" required value={formData.bankName} onChange={e => {
+                          const bank = e.target.value;
+                          const branchCodes: Record<string, string> = {
+                            'FNB': '250655', 'Standard Bank': '051001', 'ABSA': '632005',
+                            'Nedbank': '198765', 'Capitec Bank': '470010', 'Discovery Bank': '679000',
+                            'Investec': '580105', 'TymeBank': '678910', 'African Bank': '430000'
+                          };
+                          setFormData({ ...formData, bankName: bank, branchCode: branchCodes[bank] || '' });
+                        }} style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          <option value="" style={{ color: 'black' }}>Select Bank</option>
+                          <option value="FNB" style={{ color: 'black' }}>First National Bank (FNB)</option>
+                          <option value="Standard Bank" style={{ color: 'black' }}>Standard Bank</option>
+                          <option value="ABSA" style={{ color: 'black' }}>ABSA</option>
+                          <option value="Nedbank" style={{ color: 'black' }}>Nedbank</option>
+                          <option value="Capitec Bank" style={{ color: 'black' }}>Capitec Bank</option>
+                          <option value="Discovery Bank" style={{ color: 'black' }}>Discovery Bank</option>
+                          <option value="Investec" style={{ color: 'black' }}>Investec</option>
+                          <option value="TymeBank" style={{ color: 'black' }}>TymeBank</option>
+                          <option value="African Bank" style={{ color: 'black' }}>African Bank</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '1px' }}>Branch Code</label>
+                        <input type="text" className="form-input" required placeholder="Auto-filled"
+                          value={formData.branchCode} onChange={e => setFormData({ ...formData, branchCode: e.target.value })}
+                          style={{ background: 'rgba(0,0,0,0.2)', color: 'var(--gold)', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 600, letterSpacing: '1px' }} />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Account Holder Name</label>
-                    <input type="text" className="form-input" required placeholder="As it appears on your statement"
-                      value={formData.accountHolder} onChange={e => setFormData({ ...formData, accountHolder: e.target.value })} />
-                  </div>
-
-                  <div className="grid-2" style={{ gap: 'var(--sp-5)' }}>
-                    <div className="form-group">
-                      <label className="form-label">Account Number</label>
-                      <input type="text" className="form-input" required placeholder="Account number"
-                        value={formData.accountNumber} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })} />
+                    <div className="form-group" style={{ marginBottom: 'var(--sp-5)' }}>
+                      <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '1px' }}>Account Holder Name</label>
+                      <input type="text" className="form-input" required placeholder="J DOE"
+                        value={formData.accountHolder} onChange={e => setFormData({ ...formData, accountHolder: e.target.value })}
+                        style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase', letterSpacing: '1px' }} />
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">Account Type</label>
-                      <select className="form-input" required value={formData.accountType} onChange={e => setFormData({ ...formData, accountType: e.target.value })}>
-                        <option value="">Select Type</option>
-                        <option value="cheque">Cheque / Current</option>
-                        <option value="savings">Savings</option>
-                        <option value="transmission">Transmission</option>
-                      </select>
+                    <div className="grid-2" style={{ gap: 'var(--sp-5)' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '1px' }}>Account Number</label>
+                        <input type="text" className="form-input" required placeholder="•••• •••• ••••"
+                          value={formData.accountNumber} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })}
+                          style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', letterSpacing: '2px', fontSize: '16px' }} />
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 'var(--text-xs)', textTransform: 'uppercase', letterSpacing: '1px' }}>Account Type</label>
+                        <select className="form-input" required value={formData.accountType} onChange={e => setFormData({ ...formData, accountType: e.target.value })}
+                          style={{ background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
+                          <option value="" style={{ color: 'black' }}>Select Type</option>
+                          <option value="cheque" style={{ color: 'black' }}>Cheque / Current</option>
+                          <option value="savings" style={{ color: 'black' }}>Savings</option>
+                          <option value="transmission" style={{ color: 'black' }}>Transmission</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
                     <button type="button" onClick={handleBack} className="btn btn-ghost" style={{ paddingLeft: 0 }}><ArrowLeft size={18} /> Back</button>
-                    <button type="submit" className="btn btn-primary">Continue <ArrowRight size={18} /></button>
+                    <button type="submit" className="btn btn-primary">Continue to Review <ArrowRight size={18} /></button>
                   </div>
                 </form>
               )}
 
-              {/* STEP 7: REVIEW */}
-              {currentStep === 7 && (
+              {/* STEP 8: REVIEW */}
+              {currentStep === 8 && (
                 <div>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Review & Submit</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
@@ -619,11 +831,19 @@ const ApplyPage = () => {
                       </div>
                     </div>
 
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', cursor: 'pointer', marginBottom: 'var(--sp-4)' }}>
+                      <input type="checkbox" style={{ marginTop: '4px', accentColor: 'var(--navy)' }} required
+                        checked={formData.agreedTerms} onChange={e => setFormData({ ...formData, agreedTerms: e.target.checked })} />
+                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                        I have read, understood, and accept the General Terms & Conditions for my membership.
+                      </div>
+                    </label>
+
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--sp-3)', cursor: 'pointer' }}>
                       <input type="checkbox" style={{ marginTop: '4px', accentColor: 'var(--navy)' }} required
-                        checked={formData.acceptsTerms} onChange={e => setFormData({ ...formData, acceptsTerms: e.target.checked })} />
+                        checked={formData.agreedDebit} onChange={e => setFormData({ ...formData, agreedDebit: e.target.checked })} />
                       <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                        I have read, understood, and accept the Terms & Conditions, and I authorize the monthly debit order for my {formData.clinicName || 'clinic'} membership.
+                        I authorize the monthly debit order of R{formData.planFee} for my {formData.clinicName || 'clinic'} membership.
                       </div>
                     </label>
                   </div>
@@ -636,7 +856,7 @@ const ApplyPage = () => {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <button type="button" onClick={handleBack} className="btn btn-ghost" style={{ paddingLeft: 0 }} disabled={isSubmitting}><ArrowLeft size={18} /> Back</button>
-                    <button type="button" onClick={handleSubmit} className="btn btn-primary" disabled={!formData.acceptsTerms || isSubmitting}>
+                    <button type="button" onClick={handleSubmit} className="btn btn-primary" disabled={(!formData.agreedTerms || !formData.agreedDebit) || isSubmitting}>
                       {isSubmitting ? 'Submitting...' : 'Submit Application'} <ShieldCheck size={18} style={{ marginLeft: 'var(--sp-2)' }} />
                     </button>
                   </div>

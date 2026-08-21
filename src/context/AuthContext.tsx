@@ -21,7 +21,7 @@ interface AuthContextType {
   loginWithOtp: (email: string) => Promise<{ error: Error | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   signup: (name: string, email: string, role: UserRole) => void; 
-  signUpWithPassword: (email: string, password: string) => Promise<{ data: any, error: Error | null }>;
+  signUpWithPassword: (email: string, password: string, metadata?: any) => Promise<{ data: any, error: Error | null }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithOAuth: (provider: 'google', redirectTo?: string) => Promise<{ error: Error | null }>;
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>;
@@ -118,12 +118,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('Signup called', { name, email, role });
   };
 
-  const signUpWithPassword = async (email: string, password: string) => {
+  const signUpWithPassword = async (email: string, password: string, metadata?: any) => {
     return await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: window.location.origin,
+        data: metadata,
       }
     });
   };
