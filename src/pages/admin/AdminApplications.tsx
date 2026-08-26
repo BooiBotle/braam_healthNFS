@@ -44,7 +44,7 @@ const AdminApplications = () => {
           applicant_id_number,
           submitted_at,
           profile_id,
-          profiles (
+          profiles!applications_profile_id_fkey (
             full_name,
             first_name,
             last_name,
