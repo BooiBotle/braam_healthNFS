@@ -63,8 +63,8 @@ const ApplyPage = () => {
       setFormData(prev => ({
         ...prev,
         email: prev.email || user.email || '',
-        firstName: prev.firstName || (user.user_metadata?.first_name || (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : '')),
-        lastName: prev.lastName || (user.user_metadata?.last_name || (user.user_metadata?.full_name && user.user_metadata.full_name.split(' ').length > 1 ? user.user_metadata.full_name.split(' ').slice(1).join(' ') : ''))
+        firstName: prev.firstName || (user.name ? user.name.split(' ')[0] : ''),
+        lastName: prev.lastName || (user.name && user.name.split(' ').length > 1 ? user.name.split(' ').slice(1).join(' ') : '')
       }));
     }
   }, [user]);
