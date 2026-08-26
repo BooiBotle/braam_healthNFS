@@ -57,19 +57,17 @@ const ApplyPage = () => {
     });
   }, []);
 
-  // Skip Step 1 if user is already authenticated (e.g. returning from Google Auth)
+  // Pre-fill email and name from user if available, but DO NOT skip Step 1 because we still need their ID and Mobile Number.
   useEffect(() => {
-    if (user && currentStep === 1) {
-      setCurrentStep(2);
-      // Pre-fill email and name from user if available
+    if (user) {
       setFormData(prev => ({
         ...prev,
         email: prev.email || user.email || '',
-        firstName: prev.firstName || (user.name ? user.name.split(' ')[0] : ''),
-        lastName: prev.lastName || (user.name && user.name.split(' ').length > 1 ? user.name.split(' ').slice(1).join(' ') : '')
+        firstName: prev.firstName || (user.user_metadata?.first_name || (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : '')),
+        lastName: prev.lastName || (user.user_metadata?.last_name || (user.user_metadata?.full_name && user.user_metadata.full_name.split(' ').length > 1 ? user.user_metadata.full_name.split(' ').slice(1).join(' ') : ''))
       }));
     }
-  }, [user, currentStep]);
+  }, [user]);
 
   // When step changes to Step 4 (Choose Plan), fetch plans for selected clinic
   useEffect(() => {
@@ -114,7 +112,11 @@ const ApplyPage = () => {
         alert("Please enter a valid South African mobile number (e.g., 082 123 4567).");
         return;
       }
-      setCurrentStep(2); // Go to Account
+      if (user) {
+        setCurrentStep(4); // Skip Account & Verify Email if already logged in
+      } else {
+        setCurrentStep(2); // Go to Account
+      }
       return;
     }
 
