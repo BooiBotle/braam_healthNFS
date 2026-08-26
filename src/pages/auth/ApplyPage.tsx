@@ -502,6 +502,21 @@ const ApplyPage = () => {
                     Tell us about yourself so we can set up your membership profile.
                   </p>
 
+                  {user && (
+                    <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.2)', padding: 'var(--sp-4)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--sp-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--status-success)', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: '2px' }}>Session Active</span>
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-heading)' }}>Continuing application as <strong>{user.email}</strong></span>
+                      </div>
+                      <button type="button" onClick={async () => {
+                        await supabase.auth.signOut();
+                        window.location.reload();
+                      }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', textDecoration: 'underline', cursor: 'pointer', padding: '4px' }}>
+                        Not you? Log out
+                      </button>
+                    </div>
+                  )}
+
                   <div className="grid-2" style={{ gap: 'var(--sp-5)', marginBottom: 'var(--sp-5)' }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
                       <label className="form-label">First Name</label>
