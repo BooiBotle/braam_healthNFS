@@ -543,7 +543,7 @@ const ApplyPage = () => {
               )}
 
               {/* STEP 4: CLINIC SELECTION (Right before Plan!) */}
-              {currentStep === 3 && (
+              {currentStep === 4 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Select Clinic Branch</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
