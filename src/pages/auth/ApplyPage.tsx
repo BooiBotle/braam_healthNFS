@@ -404,17 +404,39 @@ const ApplyPage = () => {
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Verify Your Email</h2>
                   <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
-                    We've sent a verification email to <strong>{formData.email}</strong>. Enter the 6-digit code below OR click the link in the email and then check your status.
+                    We've sent a verification email to <strong>{formData.email}</strong>. Enter the verification code below OR click the link in the email and then check your status.
                   </p>
 
                   <div className="form-group">
                     <label className="form-label">Verification Code</label>
-                    <input type="text" className="form-input" placeholder="123456" required
+                    <input type="text" className="form-input" placeholder="Enter code" required
                       style={{ fontSize: '24px', letterSpacing: '8px', textAlign: 'center' }}
-                      value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} />
+                      value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/[^0-9A-Za-z]/g, '').slice(0, 8))} />
                   </div>
 
-                  <div style={{ textAlign: 'center', marginBottom: 'var(--sp-4)' }}>
+                  <div style={{ textAlign: 'center', marginBottom: 'var(--sp-4)', marginTop: 'var(--sp-2)' }}>
+                    <button type="button" onClick={async () => {
+                      setIsSubmitting(true);
+                      setErrorMsg('');
+                      try {
+                        const { error } = await supabase.auth.resend({
+                          type: 'signup',
+                          email: formData.email,
+                          options: { emailRedirectTo: window.location.origin + '/apply' }
+                        });
+                        if (error) throw error;
+                        alert('Verification code resent! Please check your email.');
+                      } catch (err: any) {
+                        setErrorMsg(err.message || 'Failed to resend code.');
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }} className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 'var(--text-xs)' }} disabled={isSubmitting}>
+                      Didn't receive it? Resend Code
+                    </button>
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginBottom: 'var(--sp-4)', marginTop: 'var(--sp-4)' }}>
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>&mdash; OR &mdash;</span>
                   </div>
 
@@ -439,8 +461,8 @@ const ApplyPage = () => {
                       } finally {
                         setIsSubmitting(false);
                       }
-                    }} className="btn btn-ghost" disabled={isSubmitting}>
-                      {isSubmitting ? 'Checking...' : 'I clicked the link - Check Status'}
+                    }} className="btn btn-primary" style={{ width: '100%', padding: 'var(--sp-4)', fontSize: 'var(--text-base)' }} disabled={isSubmitting}>
+                      {isSubmitting ? 'Checking...' : 'I have clicked the link - Continue'} <ArrowRight size={18} />
                     </button>
                   </div>
                   
@@ -452,7 +474,7 @@ const ApplyPage = () => {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-4)' }}>
                     <button type="button" onClick={handleBack} className="btn btn-ghost" style={{ paddingLeft: 0 }} disabled={isSubmitting}><ArrowLeft size={18} /> Back</button>
-                    <button type="submit" className="btn btn-primary" disabled={isSubmitting || otpCode.length !== 6}>
+                    <button type="submit" className="btn btn-primary" disabled={isSubmitting || otpCode.length < 6}>
                       {isSubmitting ? 'Verifying...' : 'Verify Code'} <ArrowRight size={18} />
                     </button>
                   </div>

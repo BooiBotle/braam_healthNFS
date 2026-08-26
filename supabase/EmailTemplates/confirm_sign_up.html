@@ -27,11 +27,11 @@
     </div>
     <div class="content">
       <h2>Verify your email address</h2>
-      <p>Thank you for starting your application. Please use the 6-digit verification code below to confirm your email address and continue with your application.</p>
+      <p>Thank you for starting your application. Please use the verification code below or click the button to confirm your email address and continue with your application.</p>
       
-      <div class="otp-box">
+      <div style="background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 30px; margin-top: 30px;">
         <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Your Verification Code</p>
-        <p class="otp-code">{{ .Token }}</p>
+        <p style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #0f172a; margin: 0;">{{ .Token }}</p>
       </div>
 
       <p style="text-align: center; margin: 30px 0; color: #6b7280; font-size: 14px; font-weight: 600; text-transform: uppercase;">&mdash; OR &mdash;</p>
