@@ -200,17 +200,25 @@ const ApplyPage = () => {
       const { error: appError } = await supabase.from('applications').insert({
         clinic_id: clinicIdToUse || '00000000-0000-0000-0000-000000000000',
         plan_id: planIdToUse,
-        profile_id: authUserId,
+        member_id: authUserId,
         status: 'submitted',
-        applicant_name: `${formData.firstName} ${formData.lastName}`,
-        applicant_phone: formData.mobile,
-        applicant_email: formData.email,
-        applicant_id_number: formData.idNumber,
-        agreed_popia: formData.agreedPopia,
-        agreed_medical_disclosure: formData.agreedMedical,
-        agreed_debit_mandate: formData.agreedDebit,
         agreed_terms: formData.agreedTerms,
-        source: 'self_service'
+        banking_details: {
+          bank_name: formData.bankName,
+          account_number: formData.accountNumber,
+          branch_code: formData.branchCode,
+          account_type: formData.accountType
+        },
+        metadata: {
+          applicant_name: `${formData.firstName} ${formData.lastName}`,
+          applicant_phone: formData.mobile,
+          applicant_email: formData.email,
+          applicant_id_number: formData.idNumber,
+          agreed_popia: formData.agreedPopia,
+          agreed_medical_disclosure: formData.agreedMedical,
+          agreed_debit_mandate: formData.agreedDebit,
+          source: 'self_service'
+        }
       });
 
       if (appError) throw appError;
