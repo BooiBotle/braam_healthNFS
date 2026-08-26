@@ -32,6 +32,8 @@ const ApplyPage = () => {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [clinicPlans, setClinicPlans] = useState<ClinicPlan[]>([]);
   const [loadingClinics, setLoadingClinics] = useState(true);
+  const [clinicSearch, setClinicSearch] = useState('');
+  const [planSearch, setPlanSearch] = useState('');
 
   const [formData, setFormData] = useState({
     authMethod: 'password', // 'password' | 'magiclink' | 'google'
@@ -563,8 +565,17 @@ const ApplyPage = () => {
                   ) : clinics.length === 0 ? (
                     <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No active clinics available currently.</div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
-                      {clinics.map(clinic => {
+                    <>
+                      <div style={{ marginBottom: 'var(--sp-6)' }}>
+                        <input type="text" className="form-input" placeholder="Search clinics by name or location..." 
+                          value={clinicSearch} onChange={e => setClinicSearch(e.target.value)} 
+                          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)', maxHeight: '300px', overflowY: 'auto', paddingRight: '10px' }}>
+                        {clinics
+                          .filter((c, index, self) => index === self.findIndex((t) => t.name === c.name))
+                          .filter(c => c.name.toLowerCase().includes(clinicSearch.toLowerCase()) || c.city?.toLowerCase().includes(clinicSearch.toLowerCase()))
+                          .map(clinic => {
                         const isSelected = formData.clinicId === clinic.id;
                         return (
                           <div
@@ -600,6 +611,7 @@ const ApplyPage = () => {
                         );
                       })}
                     </div>
+                    </>
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
@@ -613,12 +625,21 @@ const ApplyPage = () => {
               {currentStep === 5 && (
                 <form onSubmit={handleNext}>
                   <h2 style={{ fontSize: 'var(--text-xl)', marginBottom: 'var(--sp-1)' }}>Choose Plan</h2>
-                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-8)' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--sp-6)' }}>
                     Showing available membership plans offered by <strong>{formData.clinicName || 'Selected Clinic'}</strong>.
                   </p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)' }}>
-                    {(clinicPlans.length > 0 ? clinicPlans : defaultPlans).map((plan: any) => {
+                  <div style={{ marginBottom: 'var(--sp-6)' }}>
+                    <input type="text" className="form-input" placeholder="Search plans by name..." 
+                      value={planSearch} onChange={e => setPlanSearch(e.target.value)} 
+                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', marginBottom: 'var(--sp-6)', maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
+                    {(clinicPlans.length > 0 ? clinicPlans : defaultPlans)
+                      .filter((p: any, index, self) => index === self.findIndex((t: any) => t.name === p.name))
+                      .filter((p: any) => p.name.toLowerCase().includes(planSearch.toLowerCase()))
+                      .map((plan: any) => {
                       const isSelected = formData.planName === plan.name;
                       const feeDisplay = plan.monthly_fee_cents ? (plan.monthly_fee_cents / 100) : (plan.price || 450);
 
