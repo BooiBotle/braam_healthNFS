@@ -22,8 +22,10 @@ const AdminApplications = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedApp && selectedApp.applicant_id_number) {
-      fetchMemberData(selectedApp.applicant_id_number);
+    if (selectedApp) {
+      const profile: any = Array.isArray(selectedApp.profiles) ? selectedApp.profiles[0] : selectedApp.profiles;
+      const idNumber = selectedApp.applicant_id_number || profile?.sa_id_number;
+      fetchMemberData(selectedApp.profile_id, idNumber);
     } else {
       setMemberData(null);
     }
@@ -41,12 +43,34 @@ const AdminApplications = () => {
           applicant_name,
           applicant_id_number,
           submitted_at,
+          profile_id,
+          profiles (
+            full_name,
+            first_name,
+            last_name,
+            sa_id_number,
+            phone,
+            email
+          ),
           plans (name)
         `)
         .order('submitted_at', { ascending: false });
 
       if (error) throw error;
-      setApplications(data || []);
+      
+      // Map over data to normalize applicant name and ID
+      const enrichedData = data?.map(app => {
+        const profile: any = Array.isArray(app.profiles) ? app.profiles[0] : app.profiles;
+        return {
+          ...app,
+          display_name: app.applicant_name || profile?.full_name || (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : '') || 'Unknown Applicant',
+          display_id_number: app.applicant_id_number || profile?.sa_id_number || 'N/A',
+          display_phone: profile?.phone || 'N/A',
+          display_email: profile?.email || 'N/A',
+        };
+      });
+
+      setApplications(enrichedData || []);
     } catch (error) {
       console.error('Error fetching applications:', error);
     } finally {
@@ -54,13 +78,28 @@ const AdminApplications = () => {
     }
   };
 
-  const fetchMemberData = async (idNumber: string) => {
+  const fetchMemberData = async (profileId?: string, idNumber?: string) => {
+    if (!profileId && !idNumber) {
+      setMemberData(null);
+      return;
+    }
+    
     setLoadingMemberData(true);
     try {
-      // Find profile
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name, first_name, last_name').eq('sa_id_number', idNumber);
-      if (profiles && profiles.length > 0) {
-        const profile = profiles[0];
+      let profile = null;
+      
+      // First try to find profile by profileId, then fallback to idNumber
+      if (profileId) {
+        const { data: profiles } = await supabase.from('profiles').select('id, full_name, first_name, last_name, phone, email, sa_id_number').eq('id', profileId);
+        if (profiles && profiles.length > 0) profile = profiles[0];
+      }
+      
+      if (!profile && idNumber) {
+        const { data: profiles } = await supabase.from('profiles').select('id, full_name, first_name, last_name, phone, email, sa_id_number').eq('sa_id_number', idNumber);
+        if (profiles && profiles.length > 0) profile = profiles[0];
+      }
+
+      if (profile) {
         // Fetch member
         const { data: member } = await supabase.from('members').select('*, plans(name)').eq('profile_id', profile.id).single();
         if (member) {
@@ -80,7 +119,8 @@ const AdminApplications = () => {
             dependants: deps.data || []
           });
         } else {
-           setMemberData(null);
+           // We have a profile, but no active member record yet
+           setMemberData({ profile, member: null });
         }
       } else {
         setMemberData(null);
@@ -119,8 +159,8 @@ const AdminApplications = () => {
   };
 
   const filteredApps = applications.filter(app => {
-    const name = (app.applicant_name || '').toLowerCase();
-    const idNum = (app.applicant_id_number || '');
+    const name = (app.display_name || '').toLowerCase();
+    const idNum = (app.display_id_number || '');
     const query = searchQuery.toLowerCase();
     
     return name.includes(query) || idNum.includes(query);
@@ -227,10 +267,10 @@ const AdminApplications = () => {
                     <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }}>
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div style={{ fontWeight: 500, color: '#0f172a' }}>
-                          {app.applicant_name || 'Unknown'}
+                          {app.display_name}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                          ID: {app.applicant_id_number || 'N/A'}
+                          ID: {app.display_id_number}
                         </div>
                       </td>
                       <td style={{ padding: '1rem 1.25rem', fontSize: '0.875rem', color: '#0f172a' }}>
@@ -291,11 +331,11 @@ const AdminApplications = () => {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.25rem', fontWeight: 600
               }}>
-                {selectedApp.applicant_name?.[0] || 'U'}
+                {selectedApp.display_name?.[0] || 'U'}
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.125rem', color: '#0f172a' }}>
-                  {selectedApp.applicant_name || 'Unknown Applicant'}
+                  {selectedApp.display_name}
                 </h3>
                 <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.875rem' }}>
                   Submitted on {new Date(selectedApp.submitted_at).toLocaleDateString()}
@@ -308,7 +348,7 @@ const AdminApplications = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
                   <User size={14} /> ID Number
                 </div>
-                <div style={{ color: '#0f172a', fontWeight: 500 }}>{selectedApp.applicant_id_number || 'N/A'}</div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>{selectedApp.display_id_number}</div>
               </div>
               <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
