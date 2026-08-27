@@ -57,15 +57,24 @@ const ApplyPage = () => {
     });
   }, []);
 
-  // Pre-fill email and name from user if available, but DO NOT skip Step 1 because we still need their ID and Mobile Number.
+  // Pre-fill email and name from user if available, and skip to Step 4 if logged in.
   useEffect(() => {
     if (user) {
-      setFormData(prev => ({
-        ...prev,
-        email: prev.email || user.email || '',
-        firstName: prev.firstName || (user.name ? user.name.split(' ')[0] : ''),
-        lastName: prev.lastName || (user.name && user.name.split(' ').length > 1 ? user.name.split(' ').slice(1).join(' ') : '')
-      }));
+      const loadProfile = async () => {
+        const { data } = await supabase.from('profiles').select('phone, sa_id_number').eq('id', user.id).single();
+        setFormData(prev => ({
+          ...prev,
+          email: prev.email || user.email || '',
+          firstName: prev.firstName || (user.name ? user.name.split(' ')[0] : ''),
+          lastName: prev.lastName || (user.name && user.name.split(' ').length > 1 ? user.name.split(' ').slice(1).join(' ') : ''),
+          mobile: data?.phone || prev.mobile,
+          idNumber: data?.sa_id_number || prev.idNumber
+        }));
+        if (currentStep < 4) {
+          setCurrentStep(4);
+        }
+      };
+      loadProfile();
     }
   }, [user]);
 

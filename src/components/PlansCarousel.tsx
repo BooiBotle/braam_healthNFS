@@ -4,6 +4,7 @@ import { Shield, Check, User, ArrowRight, Info, CheckCircle, Pill, Briefcase, St
 import { Link } from 'react-router-dom';
 import type { ClinicPlan } from '../lib/api/clinics';
 import PlanDetailsModal from './PlanDetailsModal';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
   plans: ClinicPlan[];
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function PlansCarousel({ plans, isLandingPage = false }: Props) {
+  const { user } = useAuth();
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<ClinicPlan | null>(null);

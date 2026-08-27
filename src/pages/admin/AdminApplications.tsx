@@ -44,6 +44,7 @@ const AdminApplications = () => {
           applicant_id_number,
           submitted_at,
           profile_id,
+          member_id,
           profiles!applications_profile_id_fkey (
             full_name,
             first_name,
@@ -52,7 +53,11 @@ const AdminApplications = () => {
             phone,
             email
           ),
-          plans (name)
+          plans (name),
+          onboarding_steps (
+            id,
+            payment_setup_done
+          )
         `)
         .order('submitted_at', { ascending: false });
 
@@ -120,7 +125,14 @@ const AdminApplications = () => {
           });
         } else {
            // We have a profile, but no active member record yet
-           setMemberData({ profile, member: null });
+           setMemberData({ 
+             profile, 
+             member: null,
+             appointments: [],
+             consultations: [],
+             payments: [],
+             dependants: []
+           });
         }
       } else {
         setMemberData(null);
@@ -137,6 +149,16 @@ const AdminApplications = () => {
     try {
       const { error } = await supabase.from('applications').update({ status, reviewed_at: new Date().toISOString() }).eq('id', appId);
       if (error) throw error;
+      
+      // If approved, activate the member profile
+      if (status === 'approved') {
+        const appToUpdate = applications.find(a => a.id === appId);
+        if (appToUpdate && appToUpdate.member_id) {
+          await supabase.from('members').update({ status: 'active', member_since: new Date().toISOString().split('T')[0] }).eq('id', appToUpdate.member_id);
+        } else if (appToUpdate && appToUpdate.profile_id) {
+          await supabase.from('members').update({ status: 'active', member_since: new Date().toISOString().split('T')[0] }).eq('profile_id', appToUpdate.profile_id);
+        }
+      }
       
       // Leave a footprint
       await logAudit({
@@ -155,6 +177,53 @@ const AdminApplications = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to update application status');
+    }
+  };
+
+  const handlePaymentReceived = async (appId: string, memberId: string | null) => {
+    try {
+      const app = applications.find(a => a.id === appId);
+      const osArray = app?.onboarding_steps || [];
+      const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
+
+      if (osRecord && osRecord.id) {
+        const { error } = await supabase.from('onboarding_steps').update({ payment_setup_done: true, payment_setup_at: new Date().toISOString() }).eq('id', osRecord.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('onboarding_steps').insert({
+          application_id: appId,
+          member_id: memberId,
+          payment_setup_done: true,
+          payment_setup_at: new Date().toISOString()
+        });
+        if (error) throw error;
+      }
+      
+      await logAudit({
+        performed_by: user?.id || 'system',
+        performer_name: user?.name || 'Admin',
+        action: 'payment_received',
+        entity_type: 'application',
+        entity_id: appId,
+        details: `Payment manually marked as received for application ${appId}`
+      });
+
+      // Update local state
+      setApplications(prev => prev.map(a => {
+        if (a.id === appId) {
+          const newStep = { id: osRecord?.id, payment_setup_done: true };
+          return { ...a, onboarding_steps: [newStep] };
+        }
+        return a;
+      }));
+      
+      if (selectedApp && selectedApp.id === appId) {
+        setSelectedApp((prev: any) => prev ? { ...prev, onboarding_steps: [{ id: osRecord?.id, payment_setup_done: true }] } : prev);
+      }
+      alert('Payment marked as received successfully.');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update payment status.');
     }
   };
 
@@ -370,6 +439,40 @@ const AdminApplications = () => {
               </div>
             </div>
 
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                  <DollarSign size={14} /> Initial Payment Status
+                </div>
+                <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                  {(() => {
+                    const osArray = selectedApp.onboarding_steps || [];
+                    const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
+                    return osRecord?.payment_setup_done ? (
+                      <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={16} /> Received</span>
+                    ) : (
+                      <span style={{ color: '#eab308' }}>Pending</span>
+                    );
+                  })()}
+                </div>
+              </div>
+              {(() => {
+                const osArray = selectedApp.onboarding_steps || [];
+                const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
+                if (!osRecord?.payment_setup_done) {
+                  return (
+                    <button 
+                      onClick={() => handlePaymentReceived(selectedApp.id, selectedApp.member_id)}
+                      style={{ padding: '0.5rem 1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
+                    >
+                      Mark Received
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
               <button 
                 onClick={() => handleApplicationStatus(selectedApp.id, 'approved', selectedApp.applicant_name)}
@@ -396,6 +499,35 @@ const AdminApplications = () => {
             ) : memberData ? (
               <div style={{ marginTop: '0.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a', margin: '0 0 1rem 0' }}>Linked Member Profile Data</h4>
+                
+                {memberData.profile && (
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.75rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                      <User size={14} /> Profile Information
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Full Name</div>
+                        <div style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.875rem' }}>{memberData.profile.full_name || `${memberData.profile.first_name} ${memberData.profile.last_name}`}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Email</div>
+                        <div style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.875rem' }}>{memberData.profile.email || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Phone</div>
+                        <div style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.875rem' }}>{memberData.profile.phone || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Member Status</div>
+                        <div style={{ color: memberData.member?.status === 'active' ? '#10b981' : '#eab308', fontWeight: 600, fontSize: '0.875rem', textTransform: 'capitalize' }}>
+                          {memberData.member ? memberData.member.status : 'Pending Activation'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   
                   <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
