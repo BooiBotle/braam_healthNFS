@@ -169,9 +169,9 @@ const AdminApplications = () => {
       if (selectedApp && selectedApp.id === appId) {
         setSelectedApp({ ...selectedApp, status });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to update application status');
+      alert(`Failed to update application status: ${err.message || JSON.stringify(err)}`);
     }
   };
 
@@ -229,9 +229,9 @@ const AdminApplications = () => {
         fetchMemberData(profileId || undefined, undefined);
       }
       alert('Policy successfully activated!');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to update payment status.');
+      alert(`Failed to activate policy: ${err.message || JSON.stringify(err)}`);
     }
   };
 
