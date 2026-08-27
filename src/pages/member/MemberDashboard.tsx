@@ -195,6 +195,8 @@ export default function Dashboard() {
 
   // No plan — direct them to plan selection
   if (!member?.plan_id) {
+    const isPending = latestApp && (latestApp.status === 'submitted' || latestApp.status === 'awaiting_approval' || latestApp.status === 'under_review');
+    
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <div style={{
@@ -204,24 +206,33 @@ export default function Dashboard() {
           boxShadow: "0 20px 50px rgba(11,27,63,0.3)",
           border: "1px solid rgba(255,255,255,0.08)",
         }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🏥</div>
-          <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Welcome to Braam Health!</div>
-          <div style={{ fontSize: 14, color: "#8DA0C2", lineHeight: 1.7, marginBottom: 28 }}>
-            You don't have a membership plan yet. Choose a plan to unlock your consultation allowance, medication benefits, and access to your digital membership card.
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Btn
-              variant="primary"
-              size="lg"
-              sx={{ width: "100%", justifyContent: "center", background: "#E8B85A", color: "#0B1B3F", fontWeight: 800 }}
-              onClick={() => navigate("/member/upgrade")}
-            >
-              <Icon name="arrowRight" size={16} /> Choose a Membership Plan
-            </Btn>
-            <div style={{ fontSize: 12, color: "#64748b" }}>
-              Already applied? An admin may still be reviewing your request.
-            </div>
-          </div>
+          {isPending ? (
+            <>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+              <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Application Under Review</div>
+              <div style={{ fontSize: 14, color: "#8DA0C2", lineHeight: 1.7, marginBottom: 28 }}>
+                We have received your application for a Braam Health membership plan. Our admin team is currently reviewing it. Please check back later for updates.
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🏥</div>
+              <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Welcome to Braam Health!</div>
+              <div style={{ fontSize: 14, color: "#8DA0C2", lineHeight: 1.7, marginBottom: 28 }}>
+                You don't have a membership plan yet. Choose a plan to unlock your consultation allowance, medication benefits, and access to your digital membership card.
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <Btn
+                  variant="primary"
+                  size="lg"
+                  sx={{ width: "100%", justifyContent: "center", background: "#E8B85A", color: "#0B1B3F", fontWeight: 800 }}
+                  onClick={() => navigate("/member/upgrade")}
+                >
+                  <Icon name="arrowRight" size={16} /> Choose a Membership Plan
+                </Btn>
+              </div>
+            </>
+          )}
         </div>
       </motion.div>
     );
