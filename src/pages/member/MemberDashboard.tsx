@@ -8,6 +8,7 @@ import {
   badge, type IconName,
 } from "../../components/shared";
 import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 
 interface RowProps {
   icon: IconName;
@@ -101,6 +102,8 @@ export default function Dashboard() {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [comms, setComms] = useState<Comm[]>([]);
+  const [latestApp, setLatestApp] = useState<any>(null);
+  const [uploadingPop, setUploadingPop] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -109,16 +112,22 @@ export default function Dashboard() {
       const mem = await getMemberDetails(user!.id);
       if (mem) {
         setMember(mem);
-        const [appts, cons, pays, { data: commData }] = await Promise.all([
+        const [appts, cons, pays, { data: commData }, { data: appData }] = await Promise.all([
           getAppointments(mem.id),
           getConsultations(mem.id),
           getPayments(mem.id),
-          supabase.from('communications').select('*').eq('member_id', mem.id).eq('status', 'pending')
+          supabase.from('communications').select('*').eq('member_id', mem.id).eq('status', 'pending'),
+          supabase.from('applications').select('*, onboarding_steps(*)').eq('member_id', mem.id).order('submitted_at', { ascending: false }).limit(1).single()
         ]);
         setAppointments(appts);
         setConsultations(cons);
         setPayments(pays);
         setComms(commData || []);
+        if (appData) setLatestApp(appData);
+      } else {
+        // Fallback: If no member record, they might just have an application tied to their profile
+        const { data: appData } = await supabase.from('applications').select('*, onboarding_steps(*)').eq('profile_id', user!.id).order('submitted_at', { ascending: false }).limit(1).single();
+        if (appData) setLatestApp(appData);
       }
       setLoading(false);
     }
@@ -136,6 +145,53 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const handlePopUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !latestApp) return;
+    
+    setUploadingPop(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}_${Date.now()}.${fileExt}`;
+      const filePath = `pop/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      const osArray = latestApp.onboarding_steps || [];
+      const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
+
+      if (osRecord && osRecord.id) {
+        await supabase.from('onboarding_steps').update({ proof_of_payment_url: publicUrl }).eq('id', osRecord.id);
+      } else {
+        await supabase.from('onboarding_steps').insert({
+          application_id: latestApp.id,
+          member_id: member?.id,
+          proof_of_payment_url: publicUrl
+        });
+      }
+      
+      // Refresh state
+      setLatestApp((prev: any) => ({
+        ...prev,
+        onboarding_steps: [{ ...(osRecord || {}), proof_of_payment_url: publicUrl }]
+      }));
+      alert("Proof of payment uploaded successfully!");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Error uploading document');
+    } finally {
+      setUploadingPop(false);
+    }
+  };
 
   // No plan — direct them to plan selection
   if (!member?.plan_id) {
@@ -179,6 +235,73 @@ export default function Dashboard() {
 
   return (
     <div>
+      {/* Payment Required Alert */}
+      {(() => {
+        const isApprovedApp = latestApp?.status === 'approved';
+        const isPendingMember = member?.status === 'pending';
+        const osArray = latestApp?.onboarding_steps || [];
+        const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
+        
+        if (isApprovedApp && isPendingMember && !osRecord?.payment_setup_done) {
+          const clinic = member?.clinic;
+          return (
+            <div style={{ marginBottom: 24, background: "#f0fdf4", border: "2px solid #22c55e", borderRadius: 12, padding: "20px", display: "flex", gap: 16, alignItems: "flex-start", boxShadow: "0 4px 12px rgba(34, 197, 94, 0.1)" }}>
+              <div style={{ background: "#dcfce7", color: "#16a34a", width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon name="card" size={24} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: "0 0 8px 0", color: "#166534", fontSize: 18 }}>Application Approved! Payment Required</h4>
+                <p style={{ margin: 0, color: "#15803d", fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
+                  Your application for the <strong>{member?.plan?.name}</strong> plan has been approved. To activate your policy and unlock your benefits, please make the first payment of <strong>R{(member?.plan?.monthly_fee_cents || 0) / 100}</strong>.
+                </p>
+                
+                {clinic && (clinic.bank_name || clinic.account_number) && (
+                  <div style={{ background: "#fff", padding: 16, borderRadius: 8, border: "1px solid #bbf7d0", marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", marginBottom: 8 }}>Clinic Banking Details</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 14, color: "#374151" }}>
+                      <div><span style={{ color: "#6b7280" }}>Bank:</span> <strong>{clinic.bank_name || 'N/A'}</strong></div>
+                      <div><span style={{ color: "#6b7280" }}>Account Name:</span> <strong>{clinic.account_name || clinic.name}</strong></div>
+                      <div><span style={{ color: "#6b7280" }}>Account Number:</span> <strong>{clinic.account_number || 'N/A'}</strong></div>
+                      <div><span style={{ color: "#6b7280" }}>Branch Code:</span> <strong>{clinic.branch_code || 'N/A'}</strong></div>
+                      <div><span style={{ color: "#6b7280" }}>Reference:</span> <strong>{member?.card_number || user?.id.slice(0, 8)}</strong></div>
+                    </div>
+                  </div>
+                )}
+
+                {osRecord?.proof_of_payment_url ? (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#dcfce7", color: "#166534", padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 14 }}>
+                    <Check size={18} /> Proof of Payment Uploaded. Awaiting Admin Activation.
+                  </div>
+                ) : (
+                  <div>
+                    <input 
+                      type="file" 
+                      id="pop-upload" 
+                      accept="image/*,.pdf" 
+                      style={{ display: 'none' }} 
+                      onChange={handlePopUpload} 
+                      disabled={uploadingPop}
+                    />
+                    <label 
+                      htmlFor="pop-upload" 
+                      style={{ 
+                        display: "inline-flex", alignItems: "center", gap: 8, 
+                        background: uploadingPop ? "#86efac" : "#22c55e", color: "#fff", 
+                        padding: "10px 20px", borderRadius: 8, fontWeight: 600, cursor: uploadingPop ? "not-allowed" : "pointer", fontSize: 14,
+                        transition: "background 0.2s"
+                      }}
+                    >
+                      <Icon name="upload" size={16} /> {uploadingPop ? "Uploading..." : "Upload Proof of Payment"}
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* Pending Communications Alert */}
       {comms.length > 0 && (
         <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 12 }}>

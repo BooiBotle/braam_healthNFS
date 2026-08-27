@@ -213,7 +213,9 @@ const ApplyPage = () => {
       const { error: appError } = await supabase.from('applications').insert({
         clinic_id: clinicIdToUse || '00000000-0000-0000-0000-000000000000',
         plan_id: planIdToUse,
-        member_id: authUserId,
+        profile_id: authUserId || null, // FIX: This MUST be profile_id so the SQL trigger fires correctly!
+        applicant_name: `${formData.firstName} ${formData.lastName}`,
+        applicant_id_number: formData.idNumber,
         status: 'submitted',
         agreed_terms: formData.agreedTerms,
         banking_details: {

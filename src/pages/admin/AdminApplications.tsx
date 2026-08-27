@@ -45,6 +45,7 @@ const AdminApplications = () => {
           submitted_at,
           profile_id,
           member_id,
+          metadata,
           profiles!applications_profile_id_fkey (
             full_name,
             first_name,
@@ -56,7 +57,8 @@ const AdminApplications = () => {
           plans (name),
           onboarding_steps (
             id,
-            payment_setup_done
+            payment_setup_done,
+            proof_of_payment_url
           )
         `)
         .order('submitted_at', { ascending: false });
@@ -68,10 +70,10 @@ const AdminApplications = () => {
         const profile: any = Array.isArray(app.profiles) ? app.profiles[0] : app.profiles;
         return {
           ...app,
-          display_name: app.applicant_name || profile?.full_name || (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : '') || 'Unknown Applicant',
-          display_id_number: app.applicant_id_number || profile?.sa_id_number || 'N/A',
-          display_phone: profile?.phone || 'N/A',
-          display_email: profile?.email || 'N/A',
+          display_name: app.applicant_name || app.metadata?.applicant_name || profile?.full_name || (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : '') || 'Unknown Applicant',
+          display_id_number: app.applicant_id_number || app.metadata?.applicant_id_number || profile?.sa_id_number || 'N/A',
+          display_phone: profile?.phone || app.metadata?.applicant_phone || 'N/A',
+          display_email: profile?.email || app.metadata?.applicant_email || 'N/A',
         };
       });
 
@@ -150,15 +152,8 @@ const AdminApplications = () => {
       const { error } = await supabase.from('applications').update({ status, reviewed_at: new Date().toISOString() }).eq('id', appId);
       if (error) throw error;
       
-      // If approved, activate the member profile
-      if (status === 'approved') {
-        const appToUpdate = applications.find(a => a.id === appId);
-        if (appToUpdate && appToUpdate.member_id) {
-          await supabase.from('members').update({ status: 'active', member_since: new Date().toISOString().split('T')[0] }).eq('id', appToUpdate.member_id);
-        } else if (appToUpdate && appToUpdate.profile_id) {
-          await supabase.from('members').update({ status: 'active', member_since: new Date().toISOString().split('T')[0] }).eq('profile_id', appToUpdate.profile_id);
-        }
-      }
+      // We no longer automatically activate the member on approval. 
+      // They must first upload POP, and then the admin manually clicks "Activate Policy".
       
       // Leave a footprint
       await logAudit({
@@ -180,12 +175,13 @@ const AdminApplications = () => {
     }
   };
 
-  const handlePaymentReceived = async (appId: string, memberId: string | null) => {
+  const handleActivatePolicy = async (appId: string, memberId: string | null, profileId: string | null) => {
     try {
       const app = applications.find(a => a.id === appId);
       const osArray = app?.onboarding_steps || [];
       const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
 
+      // 1. Mark payment as received
       if (osRecord && osRecord.id) {
         const { error } = await supabase.from('onboarding_steps').update({ payment_setup_done: true, payment_setup_at: new Date().toISOString() }).eq('id', osRecord.id);
         if (error) throw error;
@@ -198,29 +194,41 @@ const AdminApplications = () => {
         });
         if (error) throw error;
       }
+
+      // 2. Activate member
+      if (memberId) {
+        await supabase.from('members').update({ status: 'active', member_since: new Date().toISOString().split('T')[0] }).eq('id', memberId);
+      } else if (profileId) {
+        await supabase.from('members').update({ status: 'active', member_since: new Date().toISOString().split('T')[0] }).eq('profile_id', profileId);
+      }
+
+      // 3. Complete application
+      await supabase.from('applications').update({ status: 'completed' }).eq('id', appId);
       
       await logAudit({
         performed_by: user?.id || 'system',
         performer_name: user?.name || 'Admin',
-        action: 'payment_received',
+        action: 'policy_activated',
         entity_type: 'application',
         entity_id: appId,
-        details: `Payment manually marked as received for application ${appId}`
+        details: `Policy activated and payment confirmed for application ${appId}`
       });
 
       // Update local state
       setApplications(prev => prev.map(a => {
         if (a.id === appId) {
-          const newStep = { id: osRecord?.id, payment_setup_done: true };
-          return { ...a, onboarding_steps: [newStep] };
+          const newStep = { id: osRecord?.id, payment_setup_done: true, proof_of_payment_url: osRecord?.proof_of_payment_url };
+          return { ...a, status: 'completed', onboarding_steps: [newStep] };
         }
         return a;
       }));
       
       if (selectedApp && selectedApp.id === appId) {
-        setSelectedApp((prev: any) => prev ? { ...prev, onboarding_steps: [{ id: osRecord?.id, payment_setup_done: true }] } : prev);
+        setSelectedApp((prev: any) => prev ? { ...prev, status: 'completed', onboarding_steps: [{ id: osRecord?.id, payment_setup_done: true, proof_of_payment_url: osRecord?.proof_of_payment_url }] } : prev);
+        // Force refresh member data so the profile card shows "Active"
+        fetchMemberData(profileId || undefined, undefined);
       }
-      alert('Payment marked as received successfully.');
+      alert('Policy successfully activated!');
     } catch (err) {
       console.error(err);
       alert('Failed to update payment status.');
@@ -439,34 +447,52 @@ const AdminApplications = () => {
               </div>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
-                  <DollarSign size={14} /> Initial Payment Status
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
+                    <DollarSign size={14} /> Initial Payment Status
+                  </div>
+                  <div style={{ color: '#0f172a', fontWeight: 500 }}>
+                    {(() => {
+                      const osArray = selectedApp.onboarding_steps || [];
+                      const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
+                      return osRecord?.payment_setup_done ? (
+                        <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={16} /> Received</span>
+                      ) : (
+                        <span style={{ color: '#eab308' }}>Pending</span>
+                      );
+                    })()}
+                  </div>
                 </div>
-                <div style={{ color: '#0f172a', fontWeight: 500 }}>
-                  {(() => {
-                    const osArray = selectedApp.onboarding_steps || [];
-                    const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
-                    return osRecord?.payment_setup_done ? (
-                      <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={16} /> Received</span>
-                    ) : (
-                      <span style={{ color: '#eab308' }}>Pending</span>
+                {(() => {
+                  const osArray = selectedApp.onboarding_steps || [];
+                  const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
+                  if (!osRecord?.payment_setup_done) {
+                    return (
+                      <button 
+                        onClick={() => handleActivatePolicy(selectedApp.id, selectedApp.member_id, selectedApp.profile_id)}
+                        style={{ padding: '0.5rem 1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        Activate Policy
+                      </button>
                     );
-                  })()}
-                </div>
+                  }
+                  return null;
+                })()}
               </div>
+              
               {(() => {
                 const osArray = selectedApp.onboarding_steps || [];
                 const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
-                if (!osRecord?.payment_setup_done) {
+                if (osRecord?.proof_of_payment_url) {
                   return (
-                    <button 
-                      onClick={() => handlePaymentReceived(selectedApp.id, selectedApp.member_id)}
-                      style={{ padding: '0.5rem 1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}
-                    >
-                      Mark Received
-                    </button>
+                    <div style={{ padding: '0.75rem', background: '#fff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Proof of Payment</div>
+                      <a href={osRecord.proof_of_payment_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}>
+                        <FileText size={16} /> View Uploaded Document
+                      </a>
+                    </div>
                   );
                 }
                 return null;

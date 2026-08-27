@@ -27,6 +27,11 @@ export interface ClinicDetails {
   specialty?: string;
   open_24h: boolean;
   logo_url?: string;
+  bank_name?: string;
+  account_name?: string;
+  account_number?: string;
+  branch_code?: string;
+  account_type?: string;
 }
 
 export interface Member {

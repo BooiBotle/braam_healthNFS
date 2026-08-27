@@ -93,6 +93,7 @@ export default function UpgradePlan() {
           member_id: member.id,
           from_plan_id: member.plan_id || null,
           to_plan_id: selectedPlan.id,
+          clinic_id: selectedClinicId,
           status: 'pending'
         });
 
@@ -100,8 +101,9 @@ export default function UpgradePlan() {
 
       setAppliedPlan(selectedPlan);
       setSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(err.message || 'Failed to submit plan application. Please try again.');
     } finally {
       setApplying(false);
     }

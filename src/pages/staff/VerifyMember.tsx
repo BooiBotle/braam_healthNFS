@@ -359,6 +359,19 @@ const VerifyMember = () => {
                   ))}
                 </div>
 
+                <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Policy Status</div>
+                  {member.status === 'active' ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.1)', color: '#047857', padding: '6px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600 }}>
+                      <CheckCircle size={14} /> Active & Paid
+                    </div>
+                  ) : (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', color: '#b45309', padding: '6px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600 }}>
+                      <AlertTriangle size={14} /> Pending Payment / Activation
+                    </div>
+                  )}
+                </div>
+
                 {/* Plan Benefits */}
                 {plan && (
                   <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
