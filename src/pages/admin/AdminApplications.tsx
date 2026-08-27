@@ -507,10 +507,10 @@ const AdminApplications = () => {
                 <Check size={18} /> {selectedApp.status === 'approved' ? 'Approved' : 'Approve'}
               </button>
               <button 
-                onClick={() => handleApplicationStatus(selectedApp.id, 'pending', selectedApp.applicant_name)}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', border: selectedApp.status === 'pending' || selectedApp.status === 'awaiting_approval' ? '2px solid #eab308' : '1px solid transparent', background: selectedApp.status === 'pending' || selectedApp.status === 'awaiting_approval' ? '#fefce8' : '#eab308', color: selectedApp.status === 'pending' || selectedApp.status === 'awaiting_approval' ? '#eab308' : '#fff', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={() => handleApplicationStatus(selectedApp.id, 'under_review', selectedApp.applicant_name)}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', border: selectedApp.status === 'under_review' || selectedApp.status === 'awaiting_approval' ? '2px solid #eab308' : '1px solid transparent', background: selectedApp.status === 'under_review' || selectedApp.status === 'awaiting_approval' ? '#fefce8' : '#eab308', color: selectedApp.status === 'under_review' || selectedApp.status === 'awaiting_approval' ? '#eab308' : '#fff', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
               >
-                <Clock size={18} /> Pending
+                <Clock size={18} /> Under Review
               </button>
               <button 
                 onClick={() => handleApplicationStatus(selectedApp.id, 'rejected', selectedApp.applicant_name)}
