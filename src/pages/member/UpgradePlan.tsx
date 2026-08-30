@@ -61,43 +61,43 @@ export default function UpgradePlan() {
   }, [selectedClinicId]);
 
   const handleApply = async () => {
-    if (!selectedPlan || !member) return;
+    if (!selectedPlan) return;
     setApplying(true);
     try {
-      // Update the member's plan directly (admin will be notified)
-      // For self-service, this just submits a request (sets pending plan_id)
-      // but we keep them on existing plan. If no plan, set it immediately as pending.
-      const updateData: any = {
-        requested_plan_id: selectedPlan.id,
-        updated_at: new Date().toISOString(),
-      };
+      if (!member) {
+        // New user without a member record yet, create an application
+        const { error: appError } = await supabase.from('applications').insert({
+          clinic_id: selectedClinicId,
+          plan_id: selectedPlan.id,
+          profile_id: user?.id,
+          status: 'submitted',
+          source: 'self_service',
+        });
+        if (appError) throw appError;
+      } else {
+        // Existing member, update requested plan and log plan change
+        const updateData: any = {
+          requested_plan_id: selectedPlan.id,
+          updated_at: new Date().toISOString(),
+        };
 
-      // If member has no plan at all, set the plan immediately as pending
-      if (hasNoPlan) {
-        updateData.plan_id = selectedPlan.id;
-        updateData.status = 'pending';
-      }
+        if (hasNoPlan) {
+          updateData.plan_id = selectedPlan.id;
+          updateData.status = 'pending';
+        }
 
-      // 1. Update member with requested_plan_id
-      const { error: memberError } = await supabase
-        .from('members')
-        .update(updateData)
-        .eq('id', member.id);
+        const { error: memberError } = await supabase.from('members').update(updateData).eq('id', member.id);
+        if (memberError) throw memberError;
 
-      if (memberError) throw memberError;
-
-      // 2. Insert into plan_changes table so admins see it in AdminPlanChanges
-      const { error: planChangeError } = await supabase
-        .from('plan_changes')
-        .insert({
+        const { error: planChangeError } = await supabase.from('plan_changes').insert({
           member_id: member.id,
           from_plan_id: member.plan_id || null,
           to_plan_id: selectedPlan.id,
           clinic_id: selectedClinicId,
           status: 'pending'
         });
-
-      if (planChangeError) throw planChangeError;
+        if (planChangeError) throw planChangeError;
+      }
 
       setAppliedPlan(selectedPlan);
       setSuccess(true);

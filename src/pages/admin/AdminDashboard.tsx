@@ -55,6 +55,9 @@ const AdminDashboard = () => {
   const isDark = theme === 'dark';
   const navigate = useNavigate();
 
+  const [bankingMissing, setBankingMissing] = useState(false);
+  const [clinicId, setClinicId] = useState<string>('');
+
   const [stats, setStats] = useState({
     totalMembers: 0, activeMembers: 0, monthlyRevenue: 0,
     collectionSuccess: 0, consultationsThisMonth: 0,
@@ -129,15 +132,21 @@ const AdminDashboard = () => {
         revData.push({ name: months[mIdx], revenue: i === 0 ? revenue : Math.floor(Math.random() * 20000) + 30000 });
       }
 
-      // Fetch clinic name for personalized branch feeling
+      // Fetch clinic name + banking details
       let fetchedClinicName = '';
+      let fetchedClinicId = '';
       if (user?.clinicId) {
-        const { data } = await supabase.from('clinics').select('name').eq('id', user.clinicId).single();
+        const { data } = await supabase.from('clinics').select('id, name, bank_name, account_number').eq('id', user.clinicId).single();
         if (data?.name) fetchedClinicName = data.name;
+        if (data?.id) fetchedClinicId = data.id;
+        setBankingMissing(!data?.bank_name || !data?.account_number);
       } else {
-        const { data } = await supabase.from('clinics').select('name').limit(1).single();
+        const { data } = await supabase.from('clinics').select('id, name, bank_name, account_number').limit(1).single();
         if (data?.name) fetchedClinicName = data.name;
+        if (data?.id) fetchedClinicId = data.id;
+        setBankingMissing(!data?.bank_name || !data?.account_number);
       }
+      setClinicId(fetchedClinicId);
 
       setStats({ totalMembers: totalMembers || 0, activeMembers: activeMembers || 0, monthlyRevenue: revenue, collectionSuccess, consultationsThisMonth: consultations || 0, consultationsToday: consultationsToday || 0, appointmentsToday: apptsToday || 0, pendingApplications: pendingApps || 0, pendingKYC: pendingKYC || 0, upcomingAppointments: upcomingAppts || 0, crossSellActive: crossSell || 0, failedOrders });
       setPlanDistribution(distribution.length > 0 ? distribution : [{ name: 'No plans active', value: 1 }]);
@@ -216,6 +225,31 @@ const AdminDashboard = () => {
 
   return (
     <div style={{ color: pageTxt }}>
+
+      {/* ── Banking details warning ── */}
+      {bankingMissing && (
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
+          style={{
+            marginBottom: 16,
+            background: 'linear-gradient(135deg, #7c2d12, #92400e)',
+            borderRadius: 14, padding: '16px 22px',
+            display: 'flex', alignItems: 'center', gap: 16,
+            boxShadow: '0 4px 20px rgba(234,88,12,0.25)',
+          }}>
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <AlertTriangle size={22} color="#fbbf24" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginBottom: 3 }}>⚠️ Clinic Banking Details Not Set Up</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>
+              Members cannot pay for their plans until your clinic banking details are configured. Set them up now so applicants can pay and upload proof of payment.
+            </div>
+          </div>
+          <a href="/admin/settings" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#fbbf24', color: '#7c2d12', borderRadius: 8, fontWeight: 800, fontSize: 13, textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            Set Up Banking <ArrowUpRight size={14} />
+          </a>
+        </motion.div>
+      )}
 
       {/* ╔═══════════════════════════════════════════════════════════╗
           ║  COMMAND PANEL — full-page-width bleed via CSS class      ║

@@ -196,47 +196,126 @@ export default function Dashboard() {
   // No plan — direct them to plan selection
   if (!member?.plan_id) {
     const isPending = latestApp && (latestApp.status === 'submitted' || latestApp.status === 'awaiting_approval' || latestApp.status === 'under_review');
+    const isApproved = latestApp && latestApp.status === 'approved';
+    const osArray = latestApp?.onboarding_steps || [];
+    const osRecord = Array.isArray(osArray) ? osArray[0] : osArray;
     
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div style={{
-          background: "linear-gradient(135deg, #0B1B3F, #0c2557)",
-          borderRadius: 24, padding: 40, color: "#fff", textAlign: "center",
-          maxWidth: 480, margin: "0 auto",
-          boxShadow: "0 20px 50px rgba(11,27,63,0.3)",
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}>
-          {isPending ? (
-            <>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-              <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Application Under Review</div>
-              <div style={{ fontSize: 14, color: "#8DA0C2", lineHeight: 1.7, marginBottom: 28 }}>
-                We have received your application for a Braam Health membership plan. Our admin team is currently reviewing it. Please check back later for updates.
+        {isApproved && !osRecord?.payment_setup_done ? (
+          // ── Premium approved/payment-required card ──
+          <div style={{ maxWidth: 540, margin: '0 auto' }}>
+            {/* Main card */}
+            <div style={{
+              background: 'linear-gradient(145deg, #0B1B3F 0%, #1a3a6f 100%)',
+              borderRadius: 24, overflow: 'hidden',
+              boxShadow: '0 24px 64px rgba(11,27,63,0.35)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              {/* Top accent bar */}
+              <div style={{ height: 4, background: 'linear-gradient(90deg, #22c55e, #86efac, #22c55e)' }} />
+              
+              <div style={{ padding: '32px 36px' }}>
+                {/* Icon + title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(34,197,94,0.2)', border: '2px solid rgba(34,197,94,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name="shield" size={26} color="#4ade80" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>Application Approved!</div>
+                    <div style={{ fontSize: 13, color: '#4ade80', fontWeight: 600, marginTop: 3 }}>Payment required to activate your policy</div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, marginBottom: 24 }}>
+                  Great news! Your Braam Health application has been reviewed and approved. To unlock your full membership benefits, please make your first payment and upload your proof of payment.
+                </div>
+
+                {/* Status steps */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+                  {[
+                    { label: 'Application Submitted', done: true },
+                    { label: 'Application Approved ✓', done: true },
+                    { label: 'Payment Required', done: false, active: true },
+                    { label: 'Policy Activated', done: false },
+                  ].map((step, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: step.done ? '#22c55e' : step.active ? 'rgba(232,184,90,0.3)' : 'rgba(255,255,255,0.08)', border: step.active ? '2px solid #E8B85A' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {step.done && <Check size={11} color="#fff" />}
+                        {step.active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#E8B85A' }} />}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: step.active ? 700 : 500, color: step.done ? 'rgba(255,255,255,0.8)' : step.active ? '#E8B85A' : 'rgba(255,255,255,0.35)' }}>
+                        {step.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA buttons */}
+                {osRecord?.proof_of_payment_url ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', background: 'rgba(34,197,94,0.15)', borderRadius: 12, border: '1px solid rgba(34,197,94,0.3)' }}>
+                    <Check size={18} color="#4ade80" />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#4ade80' }}>Proof of Payment Uploaded</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Awaiting admin confirmation. Your policy will be activated shortly.</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <Btn
+                      variant="primary"
+                      size="lg"
+                      sx={{ flex: 1, justifyContent: 'center', background: '#22c55e', color: '#fff', fontWeight: 800, borderRadius: 12 }}
+                      onClick={() => navigate('/member/payments')}
+                    >
+                      <Icon name="card" size={16} /> View Banking Details & Pay
+                    </Btn>
+                  </div>
+                )}
               </div>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🏥</div>
-              <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Welcome to Braam Health!</div>
-              <div style={{ fontSize: 14, color: "#8DA0C2", lineHeight: 1.7, marginBottom: 28 }}>
-                You don't have a membership plan yet. Choose a plan to unlock your consultation allowance, medication benefits, and access to your digital membership card.
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <Btn
-                  variant="primary"
-                  size="lg"
-                  sx={{ width: "100%", justifyContent: "center", background: "#E8B85A", color: "#0B1B3F", fontWeight: 800 }}
-                  onClick={() => navigate("/member/upgrade")}
-                >
-                  <Icon name="arrowRight" size={16} /> Choose a Membership Plan
-                </Btn>
-              </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            background: "linear-gradient(135deg, #0B1B3F, #0c2557)",
+            borderRadius: 24, padding: 40, color: "#fff", textAlign: "center",
+            maxWidth: 480, margin: "0 auto",
+            boxShadow: "0 20px 50px rgba(11,27,63,0.3)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            {isPending ? (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+                <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Application Under Review</div>
+                <div style={{ fontSize: 14, color: "#8DA0C2", lineHeight: 1.7, marginBottom: 28 }}>
+                  We have received your application for a Braam Health membership plan. Our admin team is currently reviewing it. Please check back later for updates.
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🏥</div>
+                <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Welcome to Braam Health!</div>
+                <div style={{ fontSize: 14, color: "#8DA0C2", lineHeight: 1.7, marginBottom: 28 }}>
+                  You don't have a membership plan yet. Choose a plan to unlock your consultation allowance, medication benefits, and access to your digital membership card.
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <Btn
+                    variant="primary"
+                    size="lg"
+                    sx={{ width: "100%", justifyContent: "center", background: "#E8B85A", color: "#0B1B3F", fontWeight: 800 }}
+                    onClick={() => navigate("/member/upgrade")}
+                  >
+                    <Icon name="arrowRight" size={16} /> Choose a Membership Plan
+                  </Btn>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </motion.div>
     );
   }
+
 
   const plan = member?.plan;
   const consultationsLimit = plan?.consultations_pm ?? 3;

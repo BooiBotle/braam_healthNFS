@@ -45,6 +45,9 @@ export interface Member {
   plan?: Plan;
   clinic?: ClinicDetails;
   consultations_used_this_month?: number;
+  payment_method?: 'debit_order' | 'eft';
+  debit_mandate_signed?: boolean;
+  banking_details?: any;
 }
 
 export interface Plan {
