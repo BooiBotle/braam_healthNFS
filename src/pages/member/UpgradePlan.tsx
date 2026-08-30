@@ -75,20 +75,7 @@ export default function UpgradePlan() {
         });
         if (appError) throw appError;
       } else {
-        // Existing member, update requested plan and log plan change
-        const updateData: any = {
-          requested_plan_id: selectedPlan.id,
-          updated_at: new Date().toISOString(),
-        };
-
-        if (hasNoPlan) {
-          updateData.plan_id = selectedPlan.id;
-          updateData.status = 'pending';
-        }
-
-        const { error: memberError } = await supabase.from('members').update(updateData).eq('id', member.id);
-        if (memberError) throw memberError;
-
+        // Existing member, log plan change request
         const { error: planChangeError } = await supabase.from('plan_changes').insert({
           member_id: member.id,
           from_plan_id: member.plan_id || null,

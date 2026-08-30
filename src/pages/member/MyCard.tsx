@@ -25,13 +25,20 @@ export default function MyCard() {
     load();
   }, [user]);
 
-  const cardNumber = member?.card_number || "NFS8 9012 3456 7";
-  const qrUrl = `${window.location.origin}/member-profile/${encodeURIComponent(cardNumber)}`;
+  const cardNumber = member?.card_number || "";
+  const qrUrl = cardNumber ? `${window.location.origin}/member-profile/${encodeURIComponent(cardNumber)}` : "";
   const plan = member?.plan;
   const consultationsUsed = member?.consultations_used_this_month || 0;
-  const consultationsLimit = plan?.consultations_pm || 3;
+  const consultationsLimit = plan?.consultations_pm || 0;
   const consultationsRemaining = Math.max(0, consultationsLimit === -1 ? 999 : consultationsLimit - consultationsUsed);
-  const usagePct = consultationsLimit === -1 ? 0 : Math.min(100, (consultationsUsed / consultationsLimit) * 100);
+  const usagePct = consultationsLimit === -1 ? 0 : Math.min(100, (consultationsUsed / (consultationsLimit || 1)) * 100);
+
+  const isActive = member?.status === "active";
+  const statusColor = isActive ? "#10b981" : (member?.status === "pending" ? "#f59e0b" : "#ef4444");
+  const statusBg = isActive ? "rgba(16,185,129,0.15)" : (member?.status === "pending" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)");
+  const statusBorder = isActive ? "rgba(16,185,129,0.4)" : (member?.status === "pending" ? "rgba(245,158,11,0.4)" : "rgba(239,68,68,0.4)");
+  const statusText = isActive ? "ACTIVE" : (member?.status === "pending" ? "AWAITING PAYMENT" : member?.status?.toUpperCase() || "INACTIVE");
+
 
   if (loading) {
     return (
@@ -61,6 +68,82 @@ export default function MyCard() {
           <div style={S.pageSub}>Present this card at Braam Health Centre for instant verification.</div>
         </div>
       </div>
+
+      {!member ? (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          style={{ 
+            background: "linear-gradient(135deg, #0B1B3F 0%, #1e3a7a 100%)",
+            borderRadius: 24, padding: "40px 32px", textAlign: "center", 
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 20px 40px rgba(11,27,63,0.15)",
+            position: "relative", overflow: "hidden",
+            color: "#fff", maxWidth: "100%"
+          }}
+        >
+          {/* Animated background elements */}
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            style={{
+              position: "absolute", top: "-50%", left: "-20%", width: 400, height: 400,
+              background: "radial-gradient(circle, rgba(201,150,58,0.15) 0%, transparent 70%)",
+              borderRadius: "50%", pointerEvents: "none"
+            }}
+          />
+          <motion.div 
+            animate={{ rotate: -360 }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+            style={{
+              position: "absolute", bottom: "-30%", right: "-20%", width: 300, height: 300,
+              background: "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)",
+              borderRadius: "50%", pointerEvents: "none"
+            }}
+          />
+          
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <motion.div 
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 24px", backdropFilter: "blur(10px)"
+              }}
+            >
+              <div style={{ fontSize: 32 }}>⏳</div>
+            </motion.div>
+            
+            <h3 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 12px", letterSpacing: "-0.5px", color: "#ffffff" }}>
+              Application Processing
+            </h3>
+            
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, maxWidth: 380, margin: "0 auto 28px" }}>
+              Your membership application is currently under review by our admin team. Once approved, your digital membership card, QR code, and full plan benefits will automatically appear right here!
+            </p>
+
+            <div style={{
+              background: "rgba(0,0,0,0.25)", borderRadius: 12, padding: "16px 20px",
+              display: "flex", alignItems: "flex-start", gap: 12, textAlign: "left",
+              border: "1px solid rgba(255,255,255,0.05)", maxWidth: 440, margin: "0 auto"
+            }}>
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(201,150,58,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ fontSize: 12 }}>✨</span>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: "#E8B85A" }}>What happens next?</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>
+                  You will receive an email as soon as your account is activated. If you have been approved and haven't paid, you'll be able to setup your debit mandate right from your dashboard.
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      ) : (
+        <>
+
 
       {/* DIGITAL CARD */}
       <motion.div
@@ -104,18 +187,13 @@ export default function MyCard() {
             </div>
           </div>
           <div style={{
-            background: member?.status === "active" ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)",
-            border: `1px solid ${member?.status === "active" ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)"}`,
+            background: statusBg, border: `1px solid ${statusBorder}`,
             borderRadius: 20, padding: "4px 12px", fontSize: 10.5, fontWeight: 700, letterSpacing: 1,
-            color: member?.status === "active" ? "#10b981" : "#ef4444",
-            textTransform: "uppercase" as const,
+            color: statusColor, textTransform: "uppercase" as const,
             display: "flex", alignItems: "center", gap: 6,
           }}>
-            <div style={{
-              width: 6, height: 6, borderRadius: "50%",
-              background: member?.status === "active" ? "#10b981" : "#ef4444",
-            }} />
-            {member?.status?.toUpperCase() || "ACTIVE"}
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
+            {statusText}
           </div>
         </div>
 
@@ -135,7 +213,7 @@ export default function MyCard() {
             <div style={{ display: "flex", gap: 32 }}>
               <div>
                 <div style={{ fontSize: 10, letterSpacing: "1.4px", color: "#8DA0C2", textTransform: "uppercase", marginBottom: 3 }}>Member</div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{user?.name?.toUpperCase() || "MEMBER"}</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{member?.profiles?.full_name || member?.profiles?.first_name || user?.name?.toUpperCase() || "MEMBER"}</div>
               </div>
               <div>
                 <div style={{ fontSize: 10, letterSpacing: "1.4px", color: "#8DA0C2", textTransform: "uppercase", marginBottom: 3 }}>Plan</div>
@@ -424,6 +502,8 @@ export default function MyCard() {
           </div>
         </div>
       </motion.div>
+        </>
+      )}
     </div>
   );
 }

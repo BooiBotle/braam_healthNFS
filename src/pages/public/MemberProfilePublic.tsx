@@ -16,12 +16,12 @@ const statusColor = (status: string) => {
 };
 
 const statusLabel = (status: string) => ({
-  active: '✓ ACTIVE MEMBER',
+  active: 'VERIFIED — ACTIVE MEMBER',
   suspended: '⛔ SUSPENDED',
-  pending: '⏳ PENDING CONFIRMATION',
+  pending: '⏳ AWAITING PAYMENT',
   on_hold: '⏸ ACCOUNT ON HOLD',
   cancelled: '✕ CANCELLED',
-}[status] || status.toUpperCase());
+}[status] || `MEMBERSHIP ${status.toUpperCase()}`);
 
 export default function MemberProfilePublic() {
   const { cardNumber } = useParams<{ cardNumber: string }>();
@@ -166,23 +166,21 @@ export default function MemberProfilePublic() {
               {/* Status Banner */}
               <div style={{
                 padding: '8px 20px', textAlign: 'center',
-                background: member.status === 'active'
-                  ? 'linear-gradient(90deg, rgba(16,185,129,0.2), rgba(16,185,129,0.1))'
-                  : 'rgba(239,68,68,0.15)',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                background: statusColor(member.status || 'unknown').bg,
+                borderBottom: `1px solid ${statusColor(member.status || 'unknown').border}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
               }}>
                 <div style={{
                   width: '8px', height: '8px', borderRadius: '50%',
-                  background: member.status === 'active' ? '#10b981' : '#ef4444',
-                  boxShadow: member.status === 'active' ? '0 0 8px #10b981' : '0 0 8px #ef4444',
+                  background: statusColor(member.status || 'unknown').text,
+                  boxShadow: `0 0 8px ${statusColor(member.status || 'unknown').text}`,
                 }} />
                 <span style={{
                   fontSize: '11px', fontWeight: 700, letterSpacing: '2px',
                   textTransform: 'uppercase',
-                  color: member.status === 'active' ? '#10b981' : '#ef4444',
+                  color: statusColor(member.status || 'unknown').text,
                 }}>
-                  {member.status === 'active' ? 'VERIFIED — ACTIVE MEMBER' : `MEMBERSHIP ${member.status?.toUpperCase()}`}
+                  {statusLabel(member.status || 'unknown')}
                 </span>
               </div>
 
