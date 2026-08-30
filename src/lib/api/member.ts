@@ -107,6 +107,7 @@ export interface Dependant {
   last_name: string;
   relationship: string;
   date_of_birth: string;
+  sa_id_number?: string;
 }
 
 // API Functions
@@ -274,4 +275,22 @@ export async function getPlans() {
     .order('monthly_fee_cents', { ascending: true });
   if (error) console.error("Error fetching plans:", error);
   return data || [];
+}
+
+export async function addDependant(memberId: string, clinicId: string, dependant: Partial<Dependant>) {
+  const { data, error } = await supabase
+    .from('dependants')
+    .insert([{
+      member_id: memberId,
+      clinic_id: clinicId,
+      first_name: dependant.first_name,
+      last_name: dependant.last_name,
+      relationship: dependant.relationship,
+      date_of_birth: dependant.date_of_birth,
+      sa_id_number: dependant.sa_id_number || null
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }

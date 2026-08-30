@@ -64,21 +64,24 @@ export default function UpgradePlan() {
     if (!selectedPlan) return;
     setApplying(true);
     try {
-      if (!member) {
-        // New user without a member record yet, create an application
-        const { error: appError } = await supabase.from('applications').insert({
+      if (!member || !member.plan_id) {
+        // New user or member without a plan yet: create an application
+        const payload: any = {
           clinic_id: selectedClinicId,
           plan_id: selectedPlan.id,
           profile_id: user?.id,
           status: 'submitted',
           source: 'self_service',
-        });
+        };
+        if (member?.id) payload.member_id = member.id;
+        
+        const { error: appError } = await supabase.from('applications').insert(payload);
         if (appError) throw appError;
       } else {
-        // Existing member, log plan change request
+        // Existing member WITH a plan: log a plan change request
         const { error: planChangeError } = await supabase.from('plan_changes').insert({
           member_id: member.id,
-          from_plan_id: member.plan_id || null,
+          from_plan_id: member.plan_id,
           to_plan_id: selectedPlan.id,
           clinic_id: selectedClinicId,
           status: 'pending'
