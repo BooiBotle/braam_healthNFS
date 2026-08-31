@@ -25,23 +25,52 @@ const Navbar = () => {
       position: 'relative',
       zIndex: 100,
     }}>
-      {/* Logo */}
-      <Link to="/" style={{ 
-        display: 'flex', alignItems: 'center', textDecoration: 'none',
-        background: theme === 'dark' ? '#ffffff' : 'transparent',
-        padding: theme === 'dark' ? '6px 12px' : '0',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: theme === 'dark' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-      }}>
-        <img
-          src="/nfs-logo.png"
-          alt="NFS Insure"
-          style={{
-            height: theme === 'dark' ? '28px' : '36px',
-            width: 'auto',
-          }}
-        />
-      </Link>
+      {/* Brand */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)' }}>
+        <Link to="/" style={{ 
+          display: 'flex', alignItems: 'center', textDecoration: 'none',
+          background: theme === 'dark' ? '#ffffff' : 'transparent',
+          padding: theme === 'dark' ? '6px 12px' : '0',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: theme === 'dark' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+        }}>
+          <img
+            src="/nfs-logo.png"
+            alt="NFS Insure"
+            style={{
+              height: theme === 'dark' ? '28px' : '36px',
+              width: 'auto',
+            }}
+          />
+        </Link>
+        <div style={{ width: '2px', height: '28px', background: 'var(--border)' }} className="desktop-only" />
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <div style={{ 
+            display: 'flex', alignItems: 'center', 
+            padding: '6px 14px', 
+            background: 'var(--gold-subtle)',
+            border: '1px solid var(--border-gold)',
+            borderRadius: 'var(--radius-full)',
+            boxShadow: 'var(--shadow-sm)',
+            transition: 'all 200ms ease',
+          }}>
+            <div style={{ 
+              width: '6px', height: '6px', borderRadius: '50%', 
+              background: 'var(--gold)', marginRight: '8px', 
+              boxShadow: '0 0 8px var(--gold)' 
+            }} />
+            <span style={{ 
+              fontSize: '0.8rem', 
+              fontWeight: 800, 
+              color: 'var(--gold)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
+            }}>
+              HEALTH
+            </span>
+          </div>
+        </Link>
+      </div>
 
       {/* Desktop Nav */}
       <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-8)' }}>

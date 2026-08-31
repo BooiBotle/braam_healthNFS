@@ -101,7 +101,7 @@ const LandingPage = () => {
               <motion.div variants={fadeUp}>
                 <span className="section-badge" style={{ marginBottom: 'var(--sp-5)', display: 'inline-flex' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }} />
-                  Braam Health Centre
+                  NFS Health Platform
                 </span>
               </motion.div>
 
