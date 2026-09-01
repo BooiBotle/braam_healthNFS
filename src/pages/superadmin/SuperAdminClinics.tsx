@@ -25,7 +25,8 @@ const SuperAdminClinics = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteClinic, setInviteClinic] = useState<{ id: string; name: string } | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteName, setInviteName] = useState('');
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
   const [invitePhone, setInvitePhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -55,12 +56,12 @@ const SuperAdminClinics = () => {
     setIsSubmitting(true); setFeedbackMsg('');
     try {
       // Role is 'admin' for Clinic Admin, pass the specific clinic_id
-      const { error } = await inviteSuperAdmin(inviteEmail, inviteName, invitePhone, 'admin', inviteClinic.id);
+      const { error } = await inviteSuperAdmin(inviteEmail, inviteFirstName, inviteLastName, invitePhone, 'admin', inviteClinic.id);
       if (error) throw error;
       setFeedbackMsg('Clinic Admin invited successfully!');
       setTimeout(() => { 
         setShowInviteModal(false); 
-        setInviteEmail(''); setInviteName(''); setInvitePhone(''); setFeedbackMsg(''); 
+        setInviteEmail(''); setInviteFirstName(''); setInviteLastName(''); setInvitePhone(''); setFeedbackMsg(''); 
         setInviteClinic(null);
       }, 1500);
     } catch (err: any) {
@@ -269,8 +270,17 @@ const SuperAdminClinics = () => {
                 <button onClick={() => { setShowInviteModal(false); setInviteClinic(null); }} style={{ background: 'none', border: 'none', color: d.textMuted, cursor: 'pointer', padding: '0.25rem' }}><X size={18} /></button>
               </div>
               <form onSubmit={handleInviteSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: d.text }}>
+                    First Name *
+                    <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} required style={{ padding: '0.625rem', borderRadius: '8px', border: `1px solid ${d.border}`, background: d.card, color: d.text, outline: 'none' }} placeholder="Jane" />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', fontSize: '0.8125rem', fontWeight: 600, color: d.text }}>
+                    Last Name *
+                    <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} required style={{ padding: '0.625rem', borderRadius: '8px', border: `1px solid ${d.border}`, background: d.card, color: d.text, outline: 'none' }} placeholder="Doe" />
+                  </label>
+                </div>
                 {[
-                  { label: 'Full Name', type: 'text', value: inviteName, setter: setInviteName, required: true, placeholder: 'e.g. Dr. Jane Doe' },
                   { label: 'Email Address', type: 'email', value: inviteEmail, setter: setInviteEmail, required: true, placeholder: 'doctor@clinic.co.za' },
                   { label: 'Mobile Number', type: 'tel', value: invitePhone, setter: setInvitePhone, required: false, placeholder: '+27 82 000 0000' },
                 ].map(field => (

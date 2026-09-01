@@ -26,7 +26,8 @@ const SuperAdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteName, setInviteName] = useState('');
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
   const [invitePhone, setInvitePhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -44,11 +45,11 @@ const SuperAdminUsers = () => {
     e.preventDefault();
     setIsSubmitting(true); setFeedbackMsg('');
     try {
-      const { error } = await inviteSuperAdmin(inviteEmail, inviteName, invitePhone);
+      const { error } = await inviteSuperAdmin(inviteEmail, inviteFirstName, inviteLastName, invitePhone);
       if (error) throw error;
       setFeedbackMsg('Super Admin invited successfully!');
       loadData();
-      setTimeout(() => { setShowInviteModal(false); setInviteEmail(''); setInviteName(''); setInvitePhone(''); setFeedbackMsg(''); }, 1500);
+      setTimeout(() => { setShowInviteModal(false); setInviteEmail(''); setInviteFirstName(''); setInviteLastName(''); setInvitePhone(''); setFeedbackMsg(''); }, 1500);
     } catch (err: any) {
       setFeedbackMsg(err.message || 'Failed to invite.');
     } finally { setIsSubmitting(false); }
@@ -207,8 +208,17 @@ const SuperAdminUsers = () => {
                 <button onClick={() => setShowInviteModal(false)} style={{ background: 'none', border: 'none', color: d.textMuted, cursor: 'pointer', padding: '0.25rem' }}><X size={18} /></button>
               </div>
               <form onSubmit={handleInviteSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.6875rem', fontWeight: 700, color: d.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>First Name *</label>
+                    <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} required placeholder="Themba" style={{ padding: '0.625rem', borderRadius: '8px', border: `1px solid ${d.border}`, background: 'transparent', color: d.text, outline: 'none' }} onFocus={e => e.currentTarget.style.borderColor = d.gold + '60'} onBlur={e => e.currentTarget.style.borderColor = d.border} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.6875rem', fontWeight: 700, color: d.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Last Name *</label>
+                    <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} required placeholder="Dlamini" style={{ padding: '0.625rem', borderRadius: '8px', border: `1px solid ${d.border}`, background: 'transparent', color: d.text, outline: 'none' }} onFocus={e => e.currentTarget.style.borderColor = d.gold + '60'} onBlur={e => e.currentTarget.style.borderColor = d.border} />
+                  </div>
+                </div>
                 {[
-                  { label: 'Full Name', type: 'text', value: inviteName, setter: setInviteName, required: true, placeholder: 'e.g. Themba Dlamini' },
                   { label: 'Email Address', type: 'email', value: inviteEmail, setter: setInviteEmail, required: true, placeholder: 'admin@nfsinsure.co.za' },
                   { label: 'Mobile Number', type: 'tel', value: invitePhone, setter: setInvitePhone, required: false, placeholder: '+27 82 000 0000' },
                 ].map(field => (
