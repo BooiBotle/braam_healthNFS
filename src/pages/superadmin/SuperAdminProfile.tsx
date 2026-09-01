@@ -47,7 +47,7 @@ const SuperAdminProfile = () => {
     e.preventDefault(); setSaving('identity');
     try {
       const fullName = `${profile.first_name} ${profile.last_name}`.trim();
-      const { error } = await supabase.from('profiles').update({ first_name: profile.first_name, last_name: profile.last_name, full_name: fullName, sa_id_number: profile.sa_id_number, passport_number: profile.passport_number, date_of_birth: profile.date_of_birth || null, gender: profile.gender, updated_at: new Date().toISOString() }).eq('id', user!.id);
+      const { error } = await supabase.from('profiles').update({ first_name: profile.first_name, last_name: profile.last_name, sa_id_number: profile.sa_id_number, passport_number: profile.passport_number, date_of_birth: profile.date_of_birth || null, gender: profile.gender, updated_at: new Date().toISOString() }).eq('id', user!.id);
       if (error) throw error;
       showMsg('Identity saved successfully', true);
     } catch (err: any) { showMsg(err.message, false); }

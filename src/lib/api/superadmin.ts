@@ -111,10 +111,15 @@ export async function inviteSuperAdmin(email: string, fullName: string, phone?: 
   // In Supabase, if auth user creation is server side, profile is linked via auth.users.
   // We insert into profiles with super_admin portal_role.
   const tempId = crypto.randomUUID();
+  const nameParts = fullName.trim().split(' ');
+  const first_name = nameParts[0] || '';
+  const last_name = nameParts.slice(1).join(' ') || '';
+
   const { data, error } = await supabase.from('profiles').insert([{
     id: tempId,
     email,
-    full_name: fullName,
+    first_name,
+    last_name,
     phone: phone || '',
     portal_role: role,
     clinic_id: clinicId || null,

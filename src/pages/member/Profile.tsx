@@ -61,7 +61,6 @@ export default function ProfilePage() {
         const { error } = await supabase.from('profiles').update({
           first_name: formData.first_name,
           last_name: formData.last_name,
-          full_name: fullName,
           sa_id_number: formData.sa_id_number,
           passport_number: formData.passport_number,
           date_of_birth: formData.date_of_birth || null,

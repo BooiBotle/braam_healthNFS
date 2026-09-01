@@ -145,7 +145,6 @@ const ApplyPage = () => {
           const metadata = {
             first_name: formData.firstName,
             last_name: formData.lastName,
-            full_name: `${formData.firstName} ${formData.lastName}`,
             name: `${formData.firstName} ${formData.lastName}`,
             phone: formData.mobile,
             portal_role: 'member'
