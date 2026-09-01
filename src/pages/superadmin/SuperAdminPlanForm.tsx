@@ -472,7 +472,7 @@ const SuperAdminPlanForm = () => {
               </span>
             </div>
 
-            <div style={{ display: 'flex', justify-content: 'space-between', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
               <button type="button" onClick={() => setStep(2)} style={{ padding: '12px 24px', borderRadius: '10px', background: 'transparent', border: cardBorder, color: textColor, fontWeight: 600, cursor: 'pointer' }}>
                 Back to Edit
               </button>

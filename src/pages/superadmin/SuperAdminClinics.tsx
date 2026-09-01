@@ -86,6 +86,7 @@ const SuperAdminClinics = () => {
     green: '#10b981',
     red: '#ef4444',
     navy: '#1c2340',
+    surface: isDark ? 'rgba(255,255,255,0.02)' : '#f8f8f6',
     shadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 2px 12px rgba(28,35,64,0.04)',
     shadowHover: isDark ? '0 8px 28px rgba(0,0,0,0.45)' : '0 6px 20px rgba(28,35,64,0.08)',
   };
