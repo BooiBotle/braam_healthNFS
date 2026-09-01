@@ -106,7 +106,7 @@ export async function getSystemUsers() {
 }
 
 // Invite / Create new Super Admin profile
-export async function inviteSuperAdmin(email: string, fullName: string, phone?: string) {
+export async function inviteSuperAdmin(email: string, fullName: string, phone?: string, role: string = 'super_admin', clinicId?: string) {
   // First create auth user or placeholder profile
   // In Supabase, if auth user creation is server side, profile is linked via auth.users.
   // We insert into profiles with super_admin portal_role.
@@ -116,7 +116,8 @@ export async function inviteSuperAdmin(email: string, fullName: string, phone?: 
     email,
     full_name: fullName,
     phone: phone || '',
-    portal_role: 'super_admin',
+    portal_role: role,
+    clinic_id: clinicId || null,
     is_active: true
   }]).select().single();
 

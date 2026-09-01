@@ -3,10 +3,12 @@ import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getAllClinics, type Clinic } from '../../lib/api/clinics';
 
 const AdminOnboarding = () => {
   const navigate = useNavigate();
   const [plans, setPlans] = useState<any[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
@@ -26,7 +28,8 @@ const AdminOnboarding = () => {
     bankName: '',
     accountNumber: '',
     accountHolder: '',
-    collectionDate: '1'
+    collectionDate: '1',
+    clinicId: ''
   });
 
   useEffect(() => {
@@ -40,7 +43,21 @@ const AdminOnboarding = () => {
         }
       }
     };
+    // Fetch Clinics
+    const fetchClinics = async () => {
+      try {
+        const data = await getAllClinics();
+        setClinics(data);
+        if (data.length > 0) {
+          setFormData(prev => ({ ...prev, clinicId: data[0].id }));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
     fetchPlans();
+    fetchClinics();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,7 +78,8 @@ const AdminOnboarding = () => {
           last_name: formData.lastName,
           role: role,
           id_number: formData.idNumber,
-          phone: formData.phone
+          phone: formData.phone,
+          clinic_id: formData.clinicId || null
         }
       });
 
@@ -263,6 +281,23 @@ const AdminOnboarding = () => {
                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                   {role === 'staff' && 'Staff will get access to the Clinic Staff Portal for verifications and records.'}
                   {role === 'admin' && 'Admins will get full access to this Administrative Portal and all settings.'}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0f172a' }}>Assign to Clinic</label>
+                <select
+                  value={formData.clinicId}
+                  onChange={e => setFormData({...formData, clinicId: e.target.value})}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', background: '#fff' }}
+                >
+                  <option value="" disabled>Select a clinic...</option>
+                  {clinics.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  Link this staff member to a specific clinic so they can manage its patients and records.
                 </div>
               </div>
             </div>

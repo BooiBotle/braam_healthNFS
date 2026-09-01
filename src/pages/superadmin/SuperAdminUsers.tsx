@@ -28,6 +28,8 @@ const SuperAdminUsers = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
   const [invitePhone, setInvitePhone] = useState('');
+  const [inviteRole, setInviteRole] = useState('super_admin');
+  const [inviteClinicId, setInviteClinicId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
@@ -44,11 +46,19 @@ const SuperAdminUsers = () => {
     e.preventDefault();
     setIsSubmitting(true); setFeedbackMsg('');
     try {
-      const { error } = await inviteSuperAdmin(inviteEmail, inviteName, invitePhone);
+      const { error } = await inviteSuperAdmin(inviteEmail, inviteName, invitePhone, inviteRole, inviteClinicId);
       if (error) throw error;
       setFeedbackMsg('Super Admin invited successfully!');
       loadData();
-      setTimeout(() => { setShowInviteModal(false); setInviteEmail(''); setInviteName(''); setInvitePhone(''); setFeedbackMsg(''); }, 1500);
+      setTimeout(() => { 
+        setShowInviteModal(false); 
+        setInviteEmail(''); 
+        setInviteName(''); 
+        setInvitePhone(''); 
+        setInviteRole('super_admin');
+        setInviteClinicId('');
+        setFeedbackMsg(''); 
+      }, 1500);
     } catch (err: any) {
       setFeedbackMsg(err.message || 'Failed to invite.');
     } finally { setIsSubmitting(false); }
@@ -101,7 +111,7 @@ const SuperAdminUsers = () => {
             onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={e => e.currentTarget.style.transform = 'none'}
           >
-            <UserPlus size={15} /> Invite Super Admin
+            <UserPlus size={15} /> Invite User
           </button>
         </div>
       </motion.div>
@@ -178,6 +188,13 @@ const SuperAdminUsers = () => {
                   <Building size={11} /> {u.clinic?.name || 'Network-wide'}
                 </span>
                 {/* Role select */}
+                <select value={u.clinic_id || ''} onChange={e => handleRoleChange(u.id, u.portal_role, e.target.value)}
+                  style={{ padding: '0.3rem 0.5rem', borderRadius: '6px', background: d.surface, border: `1px solid ${d.border}`, color: d.text, fontSize: '0.6875rem', fontWeight: 600, fontFamily: 'Inter', outline: 'none', cursor: 'pointer', maxWidth: '100px', marginRight: '5px' }}
+                >
+                  <option value="">No Clinic</option>
+                  {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+
                 <select value={u.portal_role || 'member'} onChange={e => handleRoleChange(u.id, e.target.value, u.clinic_id)}
                   style={{ padding: '0.3rem 0.5rem', borderRadius: '6px', background: d.surface, border: `1px solid ${d.border}`, color: d.text, fontSize: '0.6875rem', fontWeight: 600, fontFamily: 'Inter', outline: 'none', cursor: 'pointer' }}
                 >
@@ -201,8 +218,8 @@ const SuperAdminUsers = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div>
-                  <h2 style={{ fontSize: '1.125rem', fontWeight: 800, margin: 0, fontFamily: 'Outfit' }}>Invite Super Admin</h2>
-                  <p style={{ fontSize: '0.75rem', color: d.textMuted, marginTop: '3px' }}>Grant full portal access to a new administrator</p>
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 800, margin: 0, fontFamily: 'Outfit' }}>Invite New User</h2>
+                  <p style={{ fontSize: '0.75rem', color: d.textMuted, marginTop: '3px' }}>Grant portal access and assign roles</p>
                 </div>
                 <button onClick={() => setShowInviteModal(false)} style={{ background: 'none', border: 'none', color: d.textMuted, cursor: 'pointer', padding: '0.25rem' }}><X size={18} /></button>
               </div>
@@ -221,6 +238,26 @@ const SuperAdminUsers = () => {
                     />
                   </div>
                 ))}
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <label style={{ fontSize: '0.6875rem', fontWeight: 700, color: d.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Role</label>
+                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value)} style={inputStyle}>
+                    <option value="super_admin">Super Admin</option>
+                    <option value="admin">Clinic Admin</option>
+                    <option value="staff">Clinic Staff</option>
+                  </select>
+                </div>
+
+                {(inviteRole === 'admin' || inviteRole === 'staff') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.6875rem', fontWeight: 700, color: d.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Assign to Clinic</label>
+                    <select value={inviteClinicId} onChange={e => setInviteClinicId(e.target.value)} style={inputStyle} required>
+                      <option value="" disabled>Select a clinic...</option>
+                      {clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                
                 {feedbackMsg && <div style={{ fontSize: '0.8125rem', color: feedbackMsg.includes('success') ? '#10b981' : '#ef4444', fontWeight: 600, padding: '0.5rem 0.75rem', borderRadius: '8px', background: feedbackMsg.includes('success') ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)' }}>{feedbackMsg}</div>}
                 <div style={{ display: 'flex', gap: '0.625rem', marginTop: '0.25rem' }}>
                   <button type="button" onClick={() => setShowInviteModal(false)} style={{ flex: 1, padding: '0.55rem', borderRadius: '8px', background: 'transparent', border: `1px solid ${d.border}`, color: d.textSub, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'Inter' }}>Cancel</button>
