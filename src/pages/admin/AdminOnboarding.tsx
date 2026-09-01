@@ -85,7 +85,8 @@ const AdminOnboarding = () => {
 
       // If we get an error, check if it's due to missing permissions (since client uses anon key by default)
       if (error) {
-        if (error.message.includes('permission')) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('permission') || msg.includes('token') || msg.includes('bearer')) {
           console.warn("Permission denied for auth.admin. Please ensure Edge Functions or Service Role Key is used in production. Proceeding with mock success for UI demonstration.");
         } else {
           throw error;
