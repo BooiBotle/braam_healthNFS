@@ -128,9 +128,12 @@ export async function getPlansForClinic(clinicId: string): Promise<ClinicPlan[]>
     .eq('clinic_id', clinicId)
     .order('display_order', { ascending: true });
 
-  if (error || !data || data.length === 0) {
-    console.error('Error fetching plans for clinic or RLS blocked access:', error);
-    // Fallback since RLS prevents unauthenticated public selection
+  if (error) {
+    console.error('Error fetching plans for clinic:', error);
+  }
+
+  // Only return fallback for the default Braam Health Centre if no data is found (e.g. RLS blocks public access)
+  if ((!data || data.length === 0) && clinicId === '0fef5dce-2117-4e2a-aca3-0e2a7f50114d') {
     return [
       { id: '7971a6a0-eee7-4c25-9e82-e0f67eec4ae1', clinic_id: clinicId, plan_type: 'essential', name: 'Essential', monthly_fee_cents: 55000, max_members: 1, consultations_pm: 3, includes_medication: true, includes_24h_access: true, includes_chronic: false, is_active: true, display_order: 1, most_popular: false } as ClinicPlan,
       { id: '090009e0-1cb3-4f35-895d-dfac96c3b5cc', clinic_id: clinicId, plan_type: 'couple', name: 'Couple', monthly_fee_cents: 72000, max_members: 2, consultations_pm: 6, includes_medication: true, includes_24h_access: true, includes_chronic: false, is_active: true, display_order: 2, most_popular: false } as ClinicPlan,
@@ -145,6 +148,7 @@ export async function getPlansForClinic(clinicId: string): Promise<ClinicPlan[]>
       { id: '7f432627-71c1-421e-8c28-11253f01a73c', clinic_id: clinicId, plan_type: 'chronic_medication', name: 'Chronic Medication Programme', monthly_fee_cents: 0, max_members: 1, consultations_pm: 0, includes_medication: true, includes_24h_access: true, includes_chronic: true, is_active: true, display_order: 11, most_popular: false } as ClinicPlan
     ];
   }
+  
   return data || [];
 }
 
