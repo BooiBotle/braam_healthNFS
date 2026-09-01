@@ -79,6 +79,8 @@ import AdminSupport from './pages/admin/AdminSupport';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminClinics from './pages/superadmin/SuperAdminClinics';
 import SuperAdminClinicForm from './pages/superadmin/SuperAdminClinicForm';
+import SuperAdminClinicPlans from './pages/superadmin/SuperAdminClinicPlans';
+import SuperAdminPlanForm from './pages/superadmin/SuperAdminPlanForm';
 import SuperAdminUsers from './pages/superadmin/SuperAdminUsers';
 import SuperAdminClinicalRisk from './pages/superadmin/SuperAdminClinicalRisk';
 import SuperAdminCommunications from './pages/superadmin/SuperAdminCommunications';
@@ -186,6 +188,9 @@ function App() {
                 <Route path="clinics" element={<SuperAdminClinics />} />
                 <Route path="clinics/new" element={<SuperAdminClinicForm />} />
                 <Route path="clinics/edit/:id" element={<SuperAdminClinicForm />} />
+                <Route path="clinics/:id/plans" element={<SuperAdminClinicPlans />} />
+                <Route path="clinics/:clinicId/plans/new" element={<SuperAdminPlanForm />} />
+                <Route path="clinics/:clinicId/plans/edit/:planId" element={<SuperAdminPlanForm />} />
                 <Route path="users" element={<SuperAdminUsers />} />
                 <Route path="clinical-risk" element={<SuperAdminClinicalRisk />} />
                 <Route path="communications" element={<SuperAdminCommunications />} />

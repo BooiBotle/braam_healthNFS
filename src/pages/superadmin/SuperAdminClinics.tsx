@@ -3,10 +3,13 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, Plus, Edit, MapPin, Phone, Mail,
-  Search, Activity, ChevronRight, ToggleLeft, ToggleRight
+  Search, Activity, ChevronRight, ToggleLeft, ToggleRight,
+  UserPlus, FileText, X, Check
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { getAllClinics, updateClinic, type Clinic } from '../../lib/api/clinics';
+import { inviteSuperAdmin } from '../../lib/api/superadmin';
+import { AnimatePresence } from 'framer-motion';
 
 const SuperAdminClinics = () => {
   const navigate = useNavigate();
@@ -17,6 +20,15 @@ const SuperAdminClinics = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // Invite Modal State
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteClinic, setInviteClinic] = useState<{ id: string; name: string } | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState('');
 
   useEffect(() => { loadClinics(); }, []);
 
@@ -34,6 +46,26 @@ const SuperAdminClinics = () => {
       await updateClinic(id, { is_active: !current });
       loadClinics();
     } catch (err) { console.error(err); }
+  };
+
+  const handleInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteClinic) return;
+    
+    setIsSubmitting(true); setFeedbackMsg('');
+    try {
+      // Role is 'admin' for Clinic Admin, pass the specific clinic_id
+      const { error } = await inviteSuperAdmin(inviteEmail, inviteName, invitePhone, 'admin', inviteClinic.id);
+      if (error) throw error;
+      setFeedbackMsg('Clinic Admin invited successfully!');
+      setTimeout(() => { 
+        setShowInviteModal(false); 
+        setInviteEmail(''); setInviteName(''); setInvitePhone(''); setFeedbackMsg(''); 
+        setInviteClinic(null);
+      }, 1500);
+    } catch (err: any) {
+      setFeedbackMsg(err.message || 'Failed to invite.');
+    } finally { setIsSubmitting(false); }
   };
 
   const filtered = clinics.filter(c =>
@@ -57,6 +89,8 @@ const SuperAdminClinics = () => {
     shadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 2px 12px rgba(28,35,64,0.04)',
     shadowHover: isDark ? '0 8px 28px rgba(0,0,0,0.45)' : '0 6px 20px rgba(28,35,64,0.08)',
   };
+
+  const inputStyle = { padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.8125rem', background: isDark ? 'rgba(255,255,255,0.04)' : '#f8f8f6', border: `1px solid ${d.border}`, color: d.text, outline: 'none', width: '100%', boxSizing: 'border-box' as const, fontFamily: 'Inter' };
 
   return (
     <div style={{ color: d.text, maxWidth: '1400px', margin: '0 auto' }}>
@@ -181,20 +215,36 @@ const SuperAdminClinics = () => {
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '0.875rem', borderTop: `1px solid ${d.border}` }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', paddingTop: '0.875rem', borderTop: `1px solid ${d.border}` }}>
                 <button
                   onClick={() => navigate(`/super-admin/clinics/edit/${clinic.id}`)}
-                  style={{ flex: 1, padding: '0.45rem', borderRadius: '8px', background: d.navy, color: '#ffffff', fontSize: '0.75rem', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', transition: 'opacity 0.2s' }}
+                  style={{ padding: '0.45rem', borderRadius: '8px', background: d.navy, color: '#ffffff', fontSize: '0.7rem', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', transition: 'opacity 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                   onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                 >
-                  <Edit size={13} color={d.gold} /> Edit Facility
+                  <Edit size={12} color={d.gold} /> Edit Facility
+                </button>
+                <button
+                  onClick={() => navigate(`/super-admin/clinics/${clinic.id}/plans`)}
+                  style={{ padding: '0.45rem', borderRadius: '8px', background: d.surface, color: d.text, fontSize: '0.7rem', fontWeight: 700, border: `1px solid ${d.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}
+                  onMouseLeave={e => e.currentTarget.style.background = d.surface}
+                >
+                  <FileText size={12} color={d.textSub} /> Manage Plans
+                </button>
+                <button
+                  onClick={() => { setInviteClinic({ id: clinic.id, name: clinic.name }); setShowInviteModal(true); }}
+                  style={{ padding: '0.45rem', borderRadius: '8px', background: d.goldSoft, color: d.gold, fontSize: '0.7rem', fontWeight: 700, border: `1px solid ${isDark ? 'rgba(201,160,51,0.2)' : 'rgba(201,160,51,0.15)'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', transition: 'opacity 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  <UserPlus size={12} /> Invite Admin
                 </button>
                 <button
                   onClick={() => handleToggle(clinic.id, clinic.is_active)}
-                  style={{ padding: '0.45rem 0.75rem', borderRadius: '8px', background: clinic.is_active ? (isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2') : (isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5'), color: clinic.is_active ? d.red : '#059669', fontSize: '0.75rem', fontWeight: 700, border: `1px solid ${clinic.is_active ? (isDark ? 'rgba(239,68,68,0.2)' : '#fecaca') : (isDark ? 'rgba(16,185,129,0.2)' : '#bbf7d0')}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                  style={{ padding: '0.45rem', borderRadius: '8px', background: clinic.is_active ? (isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2') : (isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5'), color: clinic.is_active ? d.red : '#059669', fontSize: '0.7rem', fontWeight: 700, border: `1px solid ${clinic.is_active ? (isDark ? 'rgba(239,68,68,0.2)' : '#fecaca') : (isDark ? 'rgba(16,185,129,0.2)' : '#bbf7d0')}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
                 >
-                  {clinic.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                  {clinic.is_active ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
                   {clinic.is_active ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
@@ -202,6 +252,48 @@ const SuperAdminClinics = () => {
           ))}
         </motion.div>
       )}
+
+      {/* Invite Admin Modal */}
+      <AnimatePresence>
+        {showInviteModal && inviteClinic && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }} transition={{ duration: 0.2 }}
+              style={{ background: isDark ? '#0f172a' : '#ffffff', borderRadius: '16px', border: `1px solid ${d.border}`, padding: '1.75rem', width: '100%', maxWidth: '460px', boxShadow: '0 24px 48px rgba(0,0,0,0.3)', color: d.text }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 800, margin: 0, fontFamily: 'Outfit' }}>Invite Clinic Admin</h2>
+                  <p style={{ fontSize: '0.75rem', color: d.textMuted, marginTop: '3px' }}>For <strong style={{ color: d.gold }}>{inviteClinic.name}</strong></p>
+                </div>
+                <button onClick={() => { setShowInviteModal(false); setInviteClinic(null); }} style={{ background: 'none', border: 'none', color: d.textMuted, cursor: 'pointer', padding: '0.25rem' }}><X size={18} /></button>
+              </div>
+              <form onSubmit={handleInviteSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                {[
+                  { label: 'Full Name', type: 'text', value: inviteName, setter: setInviteName, required: true, placeholder: 'e.g. Dr. Jane Doe' },
+                  { label: 'Email Address', type: 'email', value: inviteEmail, setter: setInviteEmail, required: true, placeholder: 'doctor@clinic.co.za' },
+                  { label: 'Mobile Number', type: 'tel', value: invitePhone, setter: setInvitePhone, required: false, placeholder: '+27 82 000 0000' },
+                ].map(field => (
+                  <div key={field.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.6875rem', fontWeight: 700, color: d.textMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{field.label}</label>
+                    <input type={field.type} required={field.required} placeholder={field.placeholder} value={field.value} onChange={e => field.setter(e.target.value)}
+                      style={inputStyle}
+                      onFocus={e => e.currentTarget.style.borderColor = d.gold + '60'}
+                      onBlur={e => e.currentTarget.style.borderColor = d.border}
+                    />
+                  </div>
+                ))}
+                {feedbackMsg && <div style={{ fontSize: '0.8125rem', color: feedbackMsg.includes('success') ? '#10b981' : '#ef4444', fontWeight: 600, padding: '0.5rem 0.75rem', borderRadius: '8px', background: feedbackMsg.includes('success') ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)' }}>{feedbackMsg}</div>}
+                <div style={{ display: 'flex', gap: '0.625rem', marginTop: '0.25rem' }}>
+                  <button type="button" onClick={() => { setShowInviteModal(false); setInviteClinic(null); }} style={{ flex: 1, padding: '0.55rem', borderRadius: '8px', background: 'transparent', border: `1px solid ${d.border}`, color: d.textSub, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'Inter' }}>Cancel</button>
+                  <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: '0.55rem', borderRadius: '8px', background: `linear-gradient(135deg, ${d.gold}, #b38d2a)`, color: d.navy, fontWeight: 800, border: 'none', cursor: 'pointer', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', opacity: isSubmitting ? 0.7 : 1, fontFamily: 'Inter' }}>
+                    <Check size={14} /> {isSubmitting ? 'Sending…' : 'Send Invite'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @media (max-width: 580px) { .clinics-grid { grid-template-columns: 1fr !important; } }
