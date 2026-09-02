@@ -41,7 +41,7 @@ const UpdatePasswordPage = () => {
       setError(updateError.message);
     } else {
       setSuccess(true);
-      setTimeout(() => navigate('/portal'), 3000);
+      setTimeout(() => navigate('/'), 3000);
     }
     setLoading(false);
   };

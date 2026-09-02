@@ -81,7 +81,8 @@ const AdminOnboarding = () => {
           id_number: formData.idNumber,
           phone: formData.phone,
           clinic_id: formData.clinicId || null
-        }
+        },
+        redirectTo: `${window.location.origin}/update-password`
       });
 
       // If we get an error, check if it's due to missing permissions (since client uses anon key by default)

@@ -116,7 +116,8 @@ export async function inviteSuperAdmin(email: string, firstName: string, lastNam
         phone: phone || '',
         portal_role: role,
         clinic_id: clinicId || null
-      }
+      },
+      redirectTo: `${window.location.origin}/update-password`
     });
 
     if (error) {
