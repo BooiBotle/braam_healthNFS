@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { supabaseAdmin } from '../supabaseAdmin';
 
 export interface SystemMetrics {
   totalClinics: number;
@@ -107,11 +108,8 @@ export async function getSystemUsers() {
 
 // Invite / Create new Super Admin profile
 export async function inviteSuperAdmin(email: string, firstName: string, lastName: string, phone?: string, role: string = 'super_admin', clinicId?: string) {
-  // First create auth user or placeholder profile
-  // In Supabase, if auth user creation is server side, profile is linked via auth.users.
-  // We insert into profiles with super_admin portal_role.
   try {
-    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: {
         first_name: firstName,
         last_name: lastName,
@@ -122,11 +120,7 @@ export async function inviteSuperAdmin(email: string, firstName: string, lastNam
     });
 
     if (error) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes('permission') || msg.includes('token') || msg.includes('bearer')) {
-        console.warn("Permission denied for auth.admin. Proceeding with mock success for UI demonstration.");
-        return { data: { message: 'Mock invite successful' }, error: null };
-      }
+      console.error("Invite Error:", error);
       return { data, error };
     }
 

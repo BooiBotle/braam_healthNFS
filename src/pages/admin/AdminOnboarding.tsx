@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { motion } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -72,7 +73,7 @@ const AdminOnboarding = () => {
 
       // We use the Supabase Invite Feature to create the account.
       // NOTE: This requires the Service Role Key to function perfectly in production!
-      const { data, error } = await supabase.auth.admin.inviteUserByEmail(formData.email, {
+      const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(formData.email, {
         data: {
           first_name: formData.firstName,
           last_name: formData.lastName,
