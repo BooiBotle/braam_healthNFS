@@ -135,9 +135,15 @@ const ApplyPage = () => {
         await signInWithOAuth('google', window.location.origin + '/apply');
         return;
       }
-      if (formData.authMethod === 'password' && formData.password !== formData.confirmPassword) {
-        setErrorMsg('Passwords do not match.');
-        return;
+      if (formData.authMethod === 'password') {
+        if (!/(?=.*\d)(?=.*[!@#$%^&*])/.test(formData.password)) {
+          setErrorMsg('Password must contain at least 1 numeric character and 1 special character.');
+          return;
+        }
+        if (formData.password !== formData.confirmPassword) {
+          setErrorMsg('Passwords do not match.');
+          return;
+        }
       }
       setIsSubmitting(true);
       try {
@@ -416,8 +422,9 @@ const ApplyPage = () => {
                       {errorMsg}
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--sp-8)' }}>
-                    <button type="submit" className="btn btn-primary">Continue <ArrowRight size={18} /></button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--sp-8)' }}>
+                    <button type="button" onClick={handleBack} className="btn btn-ghost" style={{ paddingLeft: 0 }} disabled={isSubmitting}><ArrowLeft size={18} /> Back</button>
+                    <button type="submit" className="btn btn-primary" disabled={isSubmitting}>Continue <ArrowRight size={18} /></button>
                   </div>
                 </form>
               )}

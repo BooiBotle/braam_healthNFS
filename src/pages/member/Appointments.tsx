@@ -118,7 +118,7 @@ export default function Appointments() {
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.grey500, marginBottom: 4 }}>Date</label>
-                  <input type="date" required value={newAppt.appointment_date} onChange={e => setNewAppt({...newAppt, appointment_date: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${C.grey100}`, boxSizing: 'border-box' }} />
+                  <input type="date" required min={new Date().toISOString().split('T')[0]} value={newAppt.appointment_date} onChange={e => setNewAppt({...newAppt, appointment_date: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${C.grey100}`, boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.grey500, marginBottom: 4 }}>Time</label>

@@ -25,6 +25,7 @@ const SuperAdminClinicalRisk = () => {
   };
 
   const handleResolve = async (incident: FlaggedIncident) => {
+    if (!window.confirm('Are you sure you want to resolve this flagged incident?')) return;
     setResolving(incident.id);
     try {
       if (incident.type === 'consultation') {

@@ -120,7 +120,7 @@ const SuperAdminUsers = () => {
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
           style={{ padding: '0.5rem 0.875rem', borderRadius: '8px', background: d.card, border: `1px solid ${d.border}`, color: d.text, fontSize: '0.8125rem', fontWeight: 600, fontFamily: 'Inter', outline: 'none' }}
         >
-          <option value="all">All Roles ({users.length})</option>
+          <option value="all">All Roles</option>
           <option value="super_admin">Super Admins</option>
           <option value="admin">Clinic Admins</option>
           <option value="staff">Staff</option>
