@@ -86,16 +86,33 @@ const AdminDashboard = () => {
       const endOfDay = new Date();
       endOfDay.setHours(23, 59, 59, 999);
 
-      const { count: totalMembers } = await supabase.from('members').select('*', { count: 'exact', head: true });
-      const { count: activeMembers } = await supabase.from('members').select('*', { count: 'exact', head: true }).eq('status', 'active');
-      const { count: consultations } = await supabase.from('consultations').select('*', { count: 'exact', head: true }).gte('visited_at', startOfMonth.toISOString());
-      const { count: consultationsToday } = await supabase.from('consultations').select('*', { count: 'exact', head: true }).gte('visited_at', startOfDay.toISOString());
+      let qTotalMembers = supabase.from('members').select('*', { count: 'exact', head: true });
+      let qActiveMembers = supabase.from('members').select('*', { count: 'exact', head: true }).eq('status', 'active');
+      let qConsultations = supabase.from('consultations').select('*', { count: 'exact', head: true }).gte('visited_at', startOfMonth.toISOString());
+      let qConsultationsToday = supabase.from('consultations').select('*', { count: 'exact', head: true }).gte('visited_at', startOfDay.toISOString());
+      let qPendingApps = supabase.from('applications').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      let qUpcomingAppts = supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('appointment_date', new Date().toISOString());
+      let qApptsToday = supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('appointment_date', startOfDay.toISOString()).lte('appointment_date', endOfDay.toISOString());
+
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        qTotalMembers = qTotalMembers.eq('clinic_id', user.clinicId);
+        qActiveMembers = qActiveMembers.eq('clinic_id', user.clinicId);
+        qConsultations = qConsultations.eq('clinic_id', user.clinicId);
+        qConsultationsToday = qConsultationsToday.eq('clinic_id', user.clinicId);
+        qPendingApps = qPendingApps.eq('clinic_id', user.clinicId);
+        qUpcomingAppts = qUpcomingAppts.eq('clinic_id', user.clinicId);
+        qApptsToday = qApptsToday.eq('clinic_id', user.clinicId);
+      }
+
+      const { count: totalMembers } = await qTotalMembers;
+      const { count: activeMembers } = await qActiveMembers;
+      const { count: consultations } = await qConsultations;
+      const { count: consultationsToday } = await qConsultationsToday;
+      const { count: pendingApps } = await qPendingApps;
+      const { count: upcomingAppts } = await qUpcomingAppts;
+      const { count: apptsToday } = await qApptsToday;
+
       const { count: pendingKYC } = await supabase.from('kyc_documents').select('*', { count: 'exact', head: true }).eq('status', 'pending_review');
-      const { count: pendingApps } = await supabase.from('applications').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-      
-      const { count: upcomingAppts } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('appointment_date', new Date().toISOString());
-      const { count: apptsToday } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('appointment_date', startOfDay.toISOString()).lte('appointment_date', endOfDay.toISOString());
-      
       const { count: crossSell } = await supabase.from('cross_sell_pipeline').select('*', { count: 'exact', head: true }).eq('status', 'lead');
 
       const { data: debits } = await supabase.from('debit_orders').select('amount_cents, status').gte('created_at', startOfMonth.toISOString());
@@ -110,15 +127,27 @@ const AdminDashboard = () => {
       const collectionSuccess = totalProcessed > 0 ? Math.round((successfulDebits / totalProcessed) * 100) : 100;
 
       const { data: plans } = await supabase.from('plans').select('id, name');
-      const { data: members } = await supabase.from('members').select('plan_id, status').eq('status', 'active');
+      let qMembersWithPlans = supabase.from('members').select('plan_id, status').eq('status', 'active');
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        qMembersWithPlans = qMembersWithPlans.eq('clinic_id', user.clinicId);
+      }
+      const { data: members } = await qMembersWithPlans;
       const planCounts: Record<string, number> = {};
       if (plans && members) {
         members.forEach(m => { const plan = plans.find(p => p.id === m.plan_id); if (plan) planCounts[plan.name] = (planCounts[plan.name] || 0) + 1; });
       }
       const distribution = Object.keys(planCounts).map(name => ({ name, value: planCounts[name] })).sort((a, b) => b.value - a.value);
 
-      const { data: recentMembers } = await supabase.from('members').select('id, created_at, profile_id, profiles(first_name, last_name)').order('created_at', { ascending: false }).limit(5);
-      const { data: recentConsults } = await supabase.from('consultations').select('id, visited_at, member_id, members(profile_id, profiles(first_name, last_name))').order('visited_at', { ascending: false }).limit(5);
+      let qRecentMembers = supabase.from('members').select('id, created_at, profile_id, profiles(first_name, last_name)').order('created_at', { ascending: false }).limit(5);
+      let qRecentConsults = supabase.from('consultations').select('id, visited_at, member_id, members(profile_id, profiles(first_name, last_name))').order('visited_at', { ascending: false }).limit(5);
+      
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        qRecentMembers = qRecentMembers.eq('clinic_id', user.clinicId);
+        qRecentConsults = qRecentConsults.eq('clinic_id', user.clinicId);
+      }
+      
+      const { data: recentMembers } = await qRecentMembers;
+      const { data: recentConsults } = await qRecentConsults;
       const activities: any[] = [];
       if (recentMembers) recentMembers.forEach((m: any) => activities.push({ id: `mem-${m.id}`, type: 'join', name: `${m.profiles?.first_name || m.profiles?.[0]?.first_name} ${m.profiles?.last_name || m.profiles?.[0]?.last_name}`, date: new Date(m.created_at) }));
       if (recentConsults) recentConsults.forEach((c: any) => { const profile = Array.isArray(c.members?.profiles) ? c.members?.profiles[0] : c.members?.profiles; activities.push({ id: `con-${c.id}`, type: 'consultation', name: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown', date: new Date(c.visited_at) }); });

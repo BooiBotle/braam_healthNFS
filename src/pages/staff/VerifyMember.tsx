@@ -102,6 +102,10 @@ const VerifyMember = () => {
         query = query.eq('card_number', cleaned);
       }
 
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        query = query.eq('clinic_id', user.clinicId);
+      }
+
       const { data, error: qErr } = await query.single();
       if (qErr) throw qErr;
 

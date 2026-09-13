@@ -253,15 +253,24 @@ const AdminKYC = () => {
         .from('kyc_documents')
         .select(`
           id, doc_type, file_name, file_url, status, admin_notes, created_at,
-          members (id, profiles (first_name, last_name, sa_id_number, phone))
+          members!inner (id, clinic_id, profiles (first_name, last_name, sa_id_number, phone))
         `)
         .order('created_at', { ascending: false });
       if (statusFilter !== 'all') query = (query as any).eq('status', statusFilter);
+
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        query = (query as any).eq('members.clinic_id', user.clinicId);
+      }
+      
       const { data, error } = await query;
       if (error) throw error;
       setDocuments(data || []);
 
-      const { data: mems } = await supabase.from('members').select('id, profiles(first_name, last_name)');
+      let memQuery = supabase.from('members').select('id, profiles(first_name, last_name)');
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        memQuery = memQuery.eq('clinic_id', user.clinicId);
+      }
+      const { data: mems } = await memQuery;
       setMembers(mems || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

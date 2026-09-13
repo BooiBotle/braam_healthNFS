@@ -50,15 +50,21 @@ const AdminMembers = () => {
     setLoading(true);
     setFetchError(null);
     try {
-      const [{ data: plansData }, { data: membersData, error: membersError }] = await Promise.all([
-        supabase.from('plans').select('id, name, consultations_pm, monthly_fee_cents, includes_medication, includes_24h_access, includes_chronic').eq('is_active', true).order('display_order'),
-        supabase.from('members')
+      let membersQuery = supabase.from('members')
           .select(`
-            id, status, card_number, created_at, plan_id,
+            id, status, card_number, created_at, plan_id, clinic_id,
             profiles (first_name, last_name, sa_id_number, passport_number, phone, email, avatar_url),
             plans (id, name, consultations_pm, monthly_fee_cents)
           `)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false });
+
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        membersQuery = membersQuery.eq('clinic_id', user.clinicId);
+      }
+
+      const [{ data: plansData }, { data: membersData, error: membersError }] = await Promise.all([
+        supabase.from('plans').select('id, name, consultations_pm, monthly_fee_cents, includes_medication, includes_24h_access, includes_chronic').eq('is_active', true).order('display_order'),
+        membersQuery,
       ]);
 
       if (membersError) throw membersError;

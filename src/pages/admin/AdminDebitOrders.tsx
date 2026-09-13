@@ -326,20 +326,27 @@ const AdminDebitOrders = () => {
         .from('debit_orders')
         .select(`
           id, amount_cents, collection_date, status, failure_reason, created_at,
-          members (
+          members!inner (
             id, plan_id, payment_method, banking_details,
             profiles (first_name, last_name, sa_id_number, phone, email)
           ),
           plans (name, monthly_fee_cents)
         `)
         .order('collection_date', { ascending: false });
-      if (user?.clinicId) query = (query as any).eq('clinic_id', user.clinicId);
+
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        query = (query as any).eq('members.clinic_id', user.clinicId);
+      }
       const { data, error } = await query;
       if (error) throw error;
       setOrders(data || []);
 
       // For create modal
-      const { data: mems } = await supabase.from('members').select('id, plan_id, profiles(first_name, last_name)');
+      let memsQuery = supabase.from('members').select('id, plan_id, profiles(first_name, last_name)');
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        memsQuery = memsQuery.eq('clinic_id', user.clinicId);
+      }
+      const { data: mems } = await memsQuery;
       setMembers(mems || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

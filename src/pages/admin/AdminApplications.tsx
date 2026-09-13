@@ -419,12 +419,12 @@ const AdminApplications = () => {
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let appsQuery = supabase
         .from('applications')
         .select(`
           id, application_type, status, applicant_name, applicant_id_number,
           submitted_at, profile_id, member_id, metadata, banking_details,
-          agreed_terms, authorized_debit, reviewed_at, rejection_reason,
+          agreed_terms, authorized_debit, reviewed_at, rejection_reason, clinic_id,
           profiles!applications_profile_id_fkey (
             full_name, first_name, last_name, sa_id_number, phone, email
           ),
@@ -432,6 +432,12 @@ const AdminApplications = () => {
           onboarding_steps (id, payment_setup_done, proof_of_payment_url, payment_setup_at)
         `)
         .order('submitted_at', { ascending: false });
+
+      if (user?.role !== 'super_admin' && user?.clinicId) {
+        appsQuery = appsQuery.eq('clinic_id', user.clinicId);
+      }
+
+      const { data, error } = await appsQuery;
 
       if (error) throw error;
       const enriched = data?.map(app => {
