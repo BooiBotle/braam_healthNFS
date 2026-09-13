@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, ShieldCheck, CheckCircle, XCircle, FileText, Download,
@@ -237,6 +238,7 @@ function KYCRequestModal({ members, onClose, onSent }: any) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 const AdminKYC = () => {
+  const { user } = useAuth();
   const [documents, setDocuments] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -337,7 +337,7 @@ const AppointmentsList = () => {
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Date</label>
                 <input 
-                  type="date" required value={newAppt.appointment_date} 
+                  type="date" required value={newAppt.appointment_date} min={new Date().toISOString().split('T')[0]}
                   onChange={e => setNewAppt({...newAppt, appointment_date: e.target.value})}
                   style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
                 />

@@ -136,7 +136,7 @@ const ApplyPage = () => {
         return;
       }
       if (formData.authMethod === 'password') {
-        if (!/(?=.*\d)(?=.*[!@#$%^&*])/.test(formData.password)) {
+        if (!/(?=.*\d)(?=.*[^a-zA-Z0-9\s])/.test(formData.password)) {
           setErrorMsg('Password must contain at least 1 numeric character and 1 special character.');
           return;
         }
@@ -392,7 +392,7 @@ const ApplyPage = () => {
                       <div className="form-group">
                         <label className="form-label">Create Password</label>
                         <div style={{ position: 'relative' }}>
-                          <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 characters" required minLength={8}
+                          <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 chars, 1 num, 1 symbol" required minLength={8}
                             value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })}
                             style={{ paddingRight: '40px' }} />
                           <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -405,7 +405,7 @@ const ApplyPage = () => {
                       <div className="form-group">
                         <label className="form-label">Confirm Password</label>
                         <div style={{ position: 'relative' }}>
-                          <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 characters" required minLength={8}
+                          <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 chars, 1 num, 1 symbol" required minLength={8}
                             value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
                             style={{ paddingRight: '40px' }} />
                           <button type="button" onClick={() => setShowPassword(!showPassword)}
