@@ -19,7 +19,7 @@ const LoginPage = () => {
   }, [user, navigate]);
 
   const [role, setRole] = useState<'member' | 'staff' | 'admin'>('member');
-  const [authMethod, setAuthMethod] = useState<'magic' | 'password'>('magic');
+  const [authMethod, setAuthMethod] = useState<'magic' | 'password'>('password');
 
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
@@ -130,7 +130,7 @@ const LoginPage = () => {
 
             {/* Role Switcher — 3 roles */}
             <div className="role-switcher" style={{ marginBottom: 'var(--sp-6)' }}>
-              <button className={role === 'member' ? 'active' : ''} onClick={() => { setRole('member'); setAuthMethod('magic'); setError(''); }}>
+              <button className={role === 'member' ? 'active' : ''} onClick={() => { setRole('member'); setAuthMethod('password'); setError(''); }}>
                 <User size={12} /> Member
               </button>
               <button className={role === 'staff' ? 'active' : ''} onClick={() => { setRole('staff'); setAuthMethod('password'); setError(''); }}>
@@ -144,11 +144,11 @@ const LoginPage = () => {
             {/* Auth Method Tabs (Members get choice, Staff/Admin forced to password) */}
             {role === 'member' && (
               <div className="auth-tabs">
-                <button className={`auth-tab ${authMethod === 'magic' ? 'active' : ''}`} onClick={() => { setAuthMethod('magic'); setError(''); }}>
-                  Magic Link
-                </button>
                 <button className={`auth-tab ${authMethod === 'password' ? 'active' : ''}`} onClick={() => { setAuthMethod('password'); setError(''); }}>
                   Password
+                </button>
+                <button className={`auth-tab ${authMethod === 'magic' ? 'active' : ''}`} onClick={() => { setAuthMethod('magic'); setError(''); }}>
+                  Magic Link
                 </button>
               </div>
             )}
@@ -221,7 +221,7 @@ const LoginPage = () => {
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', padding: 'var(--sp-3)' }}>
-                  {loading ? 'Signing in...' : `Sign In as ${role === 'admin' ? 'Admin' : 'Staff'}`}
+                  {loading ? 'Signing in...' : role === 'member' ? 'Sign In' : `Sign In as ${role === 'admin' ? 'Admin' : 'Staff'}`}
                 </button>
               </form>
             )}
