@@ -81,7 +81,6 @@ const Footer = () => {
               Legal
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-              <Link to="/terms" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Terms of Service</Link>
               <a href="/docs/PAIA%20MANUAL%20WEBSITE.pdf" target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>PAIA Manual</a>
               <a href="/docs/Conflict%20of%20Interest%20Management%20Policy%20Website.pdf" target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Conflict of Interest</a>
               <a href="/docs/Complaints%20Policy%20WEBSITE.pdf" target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Complaints Policy</a>
