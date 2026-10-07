@@ -166,9 +166,10 @@ export async function saveClinicPlan(planData: Partial<ClinicPlan>): Promise<{ d
       .single();
     return { data, error };
   } else {
+    const { id, ...insertData } = planData;
     const { data, error } = await supabase
       .from('plans')
-      .insert([planData])
+      .insert([insertData])
       .select()
       .single();
     return { data, error };

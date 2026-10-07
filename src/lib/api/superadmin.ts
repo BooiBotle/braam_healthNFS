@@ -109,13 +109,11 @@ export async function getSystemUsers() {
 // Invite / Create new Super Admin profile
 export async function inviteSuperAdmin(email: string, firstName: string, lastName: string, phone?: string, role: string = 'super_admin', clinicId?: string) {
   try {
+    // 1. Invite user with minimal metadata to avoid Postgres trigger casting crashes
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: {
         first_name: firstName,
-        last_name: lastName,
-        phone: phone || '',
-        portal_role: role,
-        clinic_id: clinicId || null
+        last_name: lastName
       },
       redirectTo: `${window.location.origin}/update-password`
     });
@@ -123,6 +121,16 @@ export async function inviteSuperAdmin(email: string, firstName: string, lastNam
     if (error) {
       console.error("Invite Error:", error);
       return { data, error };
+    }
+
+    // 2. Once the trigger successfully creates the profile as a default 'member', 
+    // we explicitly update the profile with the sensitive fields (role, clinic, phone).
+    if (data?.user) {
+      await supabaseAdmin.from('profiles').update({
+        portal_role: role,
+        clinic_id: clinicId || null,
+        phone: phone || ''
+      }).eq('id', data.user.id);
     }
 
     return { data, error: null };
