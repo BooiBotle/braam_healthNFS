@@ -44,6 +44,7 @@ const SuperAdminPlanForm = () => {
   const validateStep1 = () => {
     const e: Record<string, string> = {};
     if (!formData.name.trim()) e.name = 'Plan name is required';
+    if (!formData.plan_type) e.plan_type = 'Please select a valid plan category';
     if (formData.monthly_fee_cents < 1000) e.monthly_fee_cents = 'Monthly fee must be at least R10';
     if (!formData.description.trim()) e.description = 'A description helps members understand this plan';
     setErrors(e);
@@ -71,7 +72,6 @@ const SuperAdminPlanForm = () => {
       const { error } = await saveClinicPlan({
         ...formData,
         clinic_id: clinicId,
-        plan_type: formData.plan_type || formData.name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
       });
       if (error) throw error;
       navigate(`/super-admin/clinics/${clinicId}/plans`);
@@ -171,6 +171,29 @@ const SuperAdminPlanForm = () => {
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
               />
               {errors.name && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle size={12} />{errors.name}</div>}
+            </div>
+
+            <div>
+              <label style={labelStyle}>Plan Category (Type) *</label>
+              <select
+                style={{ ...inputStyle, border: errors.plan_type ? '1px solid #ef4444' : inputBorder, appearance: 'none' }}
+                value={formData.plan_type}
+                onChange={e => setFormData({ ...formData, plan_type: e.target.value })}
+              >
+                <option value="" disabled>Select category...</option>
+                <option value="essential">Essential</option>
+                <option value="couple">Couple</option>
+                <option value="family">Family</option>
+                <option value="family_plus">Family Plus</option>
+                <option value="senior_care">Senior Care</option>
+                <option value="corporate">Corporate</option>
+                <option value="basic_health">Basic Health</option>
+                <option value="braam_health">Braam Health</option>
+                <option value="braam_health_plus">Braam Health Plus</option>
+                <option value="corporate_membership">Corporate Membership</option>
+                <option value="chronic_medication">Chronic Medication</option>
+              </select>
+              {errors.plan_type && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertCircle size={12} />{errors.plan_type}</div>}
             </div>
 
             <div>
